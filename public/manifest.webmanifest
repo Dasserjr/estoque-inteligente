@@ -1,0 +1,12 @@
+{
+  "name": "Produtos de Limpeza",
+  "short_name": "Limpeza",
+  "description": "Controle de estoque de produtos de limpeza",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

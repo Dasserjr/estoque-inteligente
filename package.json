@@ -1,0 +1,18 @@
+{
+  "name": "estoque-limpeza",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init:local": "wrangler d1 execute estoque --local --file=./migrations/0001_init.sql && wrangler d1 execute estoque --local --file=./migrations/0002_seed.sql",
+    "db:init:remote": "wrangler d1 execute estoque --remote --file=./migrations/0001_init.sql && wrangler d1 execute estoque --remote --file=./migrations/0002_seed.sql"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

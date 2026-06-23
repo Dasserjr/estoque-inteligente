@@ -1,0 +1,19 @@
+name = "estoque-limpeza"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# PWA (pasta public) servida como assets estáticos.
+# Requisições que casam com um arquivo são servidas direto; o resto (ex.: /api/*) cai no Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Banco D1. Rode `wrangler d1 create estoque` e cole o database_id retornado abaixo.
+[[d1_databases]]
+binding = "DB"
+database_name = "estoque"
+database_id = "PREENCHER_APOS_wrangler_d1_create"
+
+# Fase 3 — alerta semanal automático (descomente quando implementar o handler scheduled):
+# [triggers]
+# crons = ["0 11 * * 1"]   # toda segunda 08h (BRT = UTC-3)
