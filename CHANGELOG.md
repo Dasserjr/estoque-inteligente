@@ -1,5 +1,13 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.1.2 · 23/06/2026
+
+### Documentação
+- `CLAUDE.md` atualizado para refletir Fase 2 concluída (rotas, variáveis, serviços)
+- `docs/DIRETRIZES_UNIVERSAIS_CLAUDE_CODE_v3.0.md` adicionado ao controle de versão
+
+---
+
 ## versão 1.0 · 23/06/2026
 
 ### Lançamento inicial
