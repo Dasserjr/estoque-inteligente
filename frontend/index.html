@@ -579,7 +579,7 @@ function ignorarPend(compraItemId, btn) {
 }
 
 fetch('/api/versao').then(r=>r.json()).then(d=>{
-  const txt = `versão ${d.versao} · ${d.build}`;
+  const txt = `versão ${d.versao}`;
   document.getElementById('versaoLogin').textContent = txt;
   document.getElementById('versaoHeader').textContent = txt;
 }).catch(()=>{});
