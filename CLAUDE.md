@@ -24,24 +24,49 @@ mutável no catálogo — é isso que destrava previsão, tendência e gasto.
 (texto_na_nota, gtin → resolve variações) · `eventos` (ledger) · `compras` + `compra_itens`
 (histórico de preço) · view `v_estoque`.
 
-## API (Fase 1 pronta)
+## API (Fases 1 e 2 implementadas)
 - `POST /api/login {senha}` → { token, perfil } (perfil = dono | empregada).
 - `GET /api/itens` (situação ok|atencao|comprar, consumo 28d, dias de cobertura).
 - `POST /api/itens/:id/mov {delta}` (registra evento). `POST/PUT /api/itens` (exigirDono).
 - `GET /api/compras/lista` (no ponto de reposição, qtd sugerida + custo estimado).
-- `POST /api/compras/nota` e `/confirmar` (Fase 2 — usam modulo-compras/notas.js).
+- `POST /api/compras/nota` e `/confirmar` (processam nota: casa itens, registra pendentes).
+- `POST /api/compras/foto {imagem, mime}` (exigirDono) — envia foto em base64, retorna itens extraídos pela IA.
+- `GET /api/versao` — retorna versão do package.json para exibição no frontend.
+- `GET /api/push/vapid-key` — chave pública VAPID para o frontend.
+- `POST /api/push/subscribe` (autenticar) — registra subscription de push notification.
+- `POST /api/push/testar` (autenticar) — dispara notificação de teste imediata.
 Regra de situação (manter igual no front e back): estoque<=min → comprar; <=min+1 → atencao.
+
+## Variáveis de ambiente obrigatórias
+Ver `backend/.env` (local) e painel Railway (produção):
+- `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `SENHA_DONO`, `SENHA_EMPREGADA`, `PORT`, `NODE_ENV`
+- `ANTHROPIC_API_KEY` — chave da API Claude para leitura de fotos.
+- `AI_PROVIDER` — provedor de IA (valor: `claude`; extensível).
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` — para push notifications.
+- `RESEND_API_KEY` — para e-mail semanal via Resend.
+- `EMAIL_DONO` — endereço do dono para receber o resumo semanal.
+- `FRONTEND_URL` — URL pública do app (usado nas notificações push para redirecionar ao clicar).
+
+## Tabelas adicionais (criadas em runtime)
+`push_subscriptions` — criada automaticamente ao iniciar o servidor (`ensureTable()` em push.js).
+Campos: endpoint, p256dh, auth, criado_em.
 
 ## modulo-compras/ — núcleo portável
 `notas.js` é AGNÓSTICO: recebe `db` (interface pg), não importa Express nem conhece rotas.
 Funções: normalizar, casarItem (gtin>apelido>fuzzy tolerante a abreviações), processarNota,
-confirmarItem. Adaptadores itensDaNFCe/itensDaFoto são stubs da Fase 2. Não acoplar a Express.
+confirmarItem, itensDaFoto (implementado — delega a `src/ai/foto.js`). Não acoplar a Express.
+`src/ai/foto.js` — chama Claude Haiku com a imagem em base64, extrai JSON de itens.
+
+## Automações (backend/src/services/)
+- `scheduler.js` — cron jobs: sexta 12h BRT → push para Delzita; sexta 18h BRT → e-mail para o dono.
+- `push.js` — gerencia subscriptions, envia push para todos os dispositivos registrados.
+- `email.js` — monta e envia e-mail HTML com consumo semanal e situação do estoque via Resend.
 
 ## Roadmap
-- Fase 2: adaptadores de entrada (foto por IA como padrão; NFC-e por QR depois), tela de
-  confirmação dos pendentes, aprendizado de apelidos. Confirmar SEMPRE antes de dar entrada.
+- Fase 2 ✅ CONCLUÍDA: foto por IA (Claude Haiku), confirmação em 3 passos, apelidos aprendidos.
+  Pendente ainda: adaptador NFC-e por QR code.
 - Fase 3: ROP dinâmico (consumo*lead_time), previsão de ruptura, gasto por categoria,
-  alerta automático (cron + e-mail).
+  alerta automático (cron + e-mail além do semanal já implementado).
 
 ## Reaproveitamento (panorama-patrimonio)
 Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, e criar uma rota
