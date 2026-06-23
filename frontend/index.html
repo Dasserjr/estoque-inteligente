@@ -312,10 +312,20 @@
       <input id="editNome" type="text" placeholder="Ex: Bom Ar, Detergente...">
       <label>Categoria</label>
       <input id="editCategoria" type="text" placeholder="Ex: Limpeza, Cozinha">
-      <label>Unidade</label>
-      <input id="editUnidade" type="text" placeholder="unidade, pacote, litro...">
-      <label>Tamanho</label>
-      <input id="editTamanho" type="text" placeholder="Ex: 360ml, 500g">
+      <label>Unidade de contagem</label>
+      <input id="editUnidade" type="text" placeholder="unidade, pacote, fardo...">
+      <label>Medida / Tamanho</label>
+      <div style="display:flex;gap:8px">
+        <input id="editTamVal" type="number" min="0" placeholder="Ex: 500" style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px">
+        <select id="editTamUn" style="padding:10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px;background:#fff">
+          <option value="un">un</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="ml">ml</option>
+          <option value="L">L</option>
+          <option value="m²">m²</option>
+        </select>
+      </div>
       <label>Setor</label>
       <input id="editSetor" type="text" placeholder="Ex: Dispensa, Banheiro">
     </div>
@@ -351,14 +361,25 @@
     <div class="cfgBox">
       <label>Ícone</label>
       <input id="npIcone" placeholder="🧴" style="width:70px;font-size:22px">
-      <label>Nome *</label>
-      <input id="npNome" type="text" placeholder="Ex: Bom Ar, Detergente 500ml">
+      <label>Nome base *</label>
+      <input id="npNome" type="text" placeholder="Ex: Sabão Barra, Detergente, Açúcar" oninput="_atualizarPreviewNome()">
+      <label>Medida / Tamanho</label>
+      <div style="display:flex;gap:8px">
+        <input id="npTamVal" type="number" min="0" placeholder="Ex: 500" style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px" oninput="_atualizarPreviewNome()">
+        <select id="npTamUn" style="padding:10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px;background:#fff" onchange="_atualizarPreviewNome()">
+          <option value="un">un</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="ml">ml</option>
+          <option value="L">L</option>
+          <option value="m²">m²</option>
+        </select>
+      </div>
+      <div id="npNomeFinal" style="font-size:13px;color:#6366f1;font-weight:600;margin-top:4px;min-height:18px"></div>
       <label>Categoria</label>
-      <input id="npCategoria" type="text" placeholder="Ex: Limpeza, Cozinha">
-      <label>Unidade</label>
-      <input id="npUnidade" type="text" value="unidade" placeholder="unidade, pacote, litro...">
-      <label>Tamanho</label>
-      <input id="npTamanho" type="text" placeholder="Ex: 360ml, 500g (opcional)">
+      <input id="npCategoria" type="text" placeholder="Ex: Limpeza, Cozinha, Higiene">
+      <label>Unidade de contagem</label>
+      <input id="npUnidade" type="text" value="unidade" placeholder="unidade, pacote, fardo...">
     </div>
     <div class="cfgBox">
       <label>Nível mínimo * (alerta de reposição)</label>
@@ -812,7 +833,9 @@ function abrirEditar(id) {
   document.getElementById('editNome').value = p.nome_canonico;
   document.getElementById('editCategoria').value = p.categoria || '';
   document.getElementById('editUnidade').value = p.unidade || 'unidade';
-  document.getElementById('editTamanho').value = p.tamanho || '';
+  const { val: tv, un: tu } = _parseTamanho(p.tamanho || '');
+  document.getElementById('editTamVal').value = tv;
+  document.getElementById('editTamUn').value = tu;
   document.getElementById('editSetor').value = p.setor || '';
   document.getElementById('editMin').value = p.min_nivel;
   document.getElementById('editIdeal').value = p.par_level;
@@ -834,7 +857,7 @@ async function salvarProduto() {
     nome_canonico: nome,
     categoria: document.getElementById('editCategoria').value.trim(),
     unidade: document.getElementById('editUnidade').value.trim() || 'unidade',
-    tamanho: document.getElementById('editTamanho').value.trim(),
+    tamanho: _composeTam(document.getElementById('editTamVal').value.trim(), document.getElementById('editTamUn').value),
     setor: document.getElementById('editSetor').value.trim(),
     min_nivel: +document.getElementById('editMin').value || 1,
     par_level: +document.getElementById('editIdeal').value || 2,
@@ -920,12 +943,23 @@ let novoProdutoCtx = null;
 function abrirNovoProduto(ctx) {
   novoProdutoCtx = ctx || null;
   document.getElementById('npIcone').value = '🧴';
-  document.getElementById('npNome').value = ctx?.descricaoNota ? _capitalizarNome(ctx.descricaoNota) : '';
   document.getElementById('npCategoria').value = '';
   document.getElementById('npUnidade').value = 'unidade';
-  document.getElementById('npTamanho').value = '';
   document.getElementById('npMin').value = '1';
   document.getElementById('npIdeal').value = '2';
+  if (ctx?.descricaoNota) {
+    const { val, un } = _extrairTamanhoDeTexto(ctx.descricaoNota);
+    document.getElementById('npTamVal').value = val;
+    document.getElementById('npTamUn').value = un;
+    // Remove medida do nome base para evitar duplicação
+    const nomeBase = _capitalizarNome(ctx.descricaoNota.replace(/(\d+\.?\d*)\s*(ml|g|kg|L|m²)/gi, '').replace(/\s+/g,' ').trim());
+    document.getElementById('npNome').value = nomeBase;
+  } else {
+    document.getElementById('npNome').value = '';
+    document.getElementById('npTamVal').value = '';
+    document.getElementById('npTamUn').value = 'un';
+  }
+  _atualizarPreviewNome();
   const orig = document.getElementById('npOrigem');
   if (ctx?.descricaoNota) {
     const preco = ctx.precoUnit != null ? ' · R$ '+Number(ctx.precoUnit).toFixed(2) : '';
@@ -938,16 +972,47 @@ function abrirNovoProduto(ctx) {
 function _capitalizarNome(t) {
   return t.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()).substring(0, 60).trim();
 }
+function _parseTamanho(str) {
+  if (!str) return { val: '', un: 'un' };
+  const m = str.match(/^(\d+\.?\d*)\s*(g|kg|ml|L|m²)$/i);
+  if (m) return { val: m[1], un: m[2] };
+  return { val: '', un: 'un' };
+}
+function _composeTam(val, un) {
+  return val && un !== 'un' ? val + un : '';
+}
+function _composeNomeFinal(base, val, un) {
+  const t = _composeTam(val, un);
+  return t ? base.trim() + ' ' + t : base.trim();
+}
+function _extrairTamanhoDeTexto(texto) {
+  const m = texto.match(/(\d+\.?\d*)\s*(ml|g|kg|L|m²)/i);
+  if (!m) return { val: '', un: 'un' };
+  const unMap = { ml:'ml', g:'g', kg:'kg', l:'L', 'm²':'m²' };
+  return { val: m[1], un: unMap[m[2].toLowerCase()] || 'un' };
+}
+function _atualizarPreviewNome() {
+  const base = (document.getElementById('npNome').value || '').trim();
+  const val = document.getElementById('npTamVal').value.trim();
+  const un = document.getElementById('npTamUn').value;
+  const final = _composeNomeFinal(base, val, un);
+  const el = document.getElementById('npNomeFinal');
+  el.textContent = final ? '→ Nome final: ' + final : '';
+}
 
 async function salvarNovoProduto() {
-  const nome = document.getElementById('npNome').value.trim();
-  if (!nome) { alert('Nome é obrigatório.'); return; }
+  const nomeBase = document.getElementById('npNome').value.trim();
+  if (!nomeBase) { alert('Nome é obrigatório.'); return; }
+  const tamVal = document.getElementById('npTamVal').value.trim();
+  const tamUn = document.getElementById('npTamUn').value;
+  const tamanho = _composeTam(tamVal, tamUn);
+  const nome_canonico = _composeNomeFinal(nomeBase, tamVal, tamUn);
   const body = {
     icone: document.getElementById('npIcone').value.trim() || '🧴',
-    nome_canonico: nome,
+    nome_canonico,
     categoria: document.getElementById('npCategoria').value.trim(),
     unidade: document.getElementById('npUnidade').value.trim() || 'unidade',
-    tamanho: document.getElementById('npTamanho').value.trim(),
+    tamanho,
     min_nivel: +document.getElementById('npMin').value || 1,
     par_level: +document.getElementById('npIdeal').value || 2,
   };

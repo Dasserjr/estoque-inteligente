@@ -1,5 +1,16 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.1.4 · 23/06/2026
+
+### Cadastro de produtos — duplicata e medidas
+- Bloqueio de nome duplicado: impede cadastrar produto com nome igual a um já existente (comparação sem distinção de maiúsculas), com mensagem explicativa
+- Campo de medida dividido em valor + unidade (g, kg, ml, L, m²): formulário de cadastro e de edição
+- Nome final composto automaticamente ao salvar: "Sabão Barra" + 90 + g → "Sabão Barra 90g"
+- Preview ao vivo do nome final durante o preenchimento do formulário
+- Ao cadastrar da nota fiscal: medida extraída automaticamente do texto da nota (ex: "360ML" → 360 ml)
+
+---
+
 ## versão 1.1.3 · 23/06/2026
 
 ### Gestão de Produtos (pré-Fase 3)

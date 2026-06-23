@@ -81,6 +81,12 @@ router.post('/', autenticar, exigirDono, async (req, res) => {
   const b = req.body || {};
   if (!b.nome_canonico) return res.status(400).json({ erro: 'nome obrigatório' });
   try {
+    const { rows: dup } = await pool.query(
+      `SELECT nome_canonico FROM catalogo WHERE LOWER(nome_canonico) = LOWER($1) LIMIT 1`,
+      [b.nome_canonico]
+    );
+    if (dup.length)
+      return res.status(409).json({ erro: `Já existe um produto com este nome: "${dup[0].nome_canonico}". Se for tamanho diferente, inclua a medida no nome (ex: "Sabão Barra 90g" e "Sabão Barra 200g").` });
     const { rows } = await pool.query(
       `INSERT INTO catalogo (nome_canonico, categoria, unidade, tamanho, par_level, min_nivel, icone)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
