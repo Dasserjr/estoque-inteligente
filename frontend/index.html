@@ -15,8 +15,10 @@
   header{position:sticky;top:0;z-index:10;background:var(--azul);color:#fff;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.15);}
   header h1{margin:0;font-size:22px;}
   header p{margin:4px 0 0;font-size:14px;opacity:.92;}
-  #status-conn{font-size:12px;margin-top:4px;display:none;}
-  #status-conn.off{display:block;background:rgba(0,0,0,.2);padding:3px 8px;border-radius:6px;}
+  #status-conn{display:none;}
+  #banner-conn{position:sticky;top:64px;z-index:9;text-align:center;font-size:16px;font-weight:700;padding:12px 16px;display:none;transition:background .3s;}
+  #banner-conn.online{display:block;background:#16a34a;color:#fff;}
+  #banner-conn.offline{display:block;background:#dc2626;color:#fff;}
   #aviso{margin:12px;border-radius:16px;background:var(--vermelho-bg);border:2px solid var(--vermelho);padding:14px 16px;display:none;}
   #aviso.show{display:block;}
   #aviso h2{margin:0 0 6px;font-size:17px;color:var(--vermelho);}
@@ -124,6 +126,8 @@
   <div id="status-conn"></div>
   <p style="margin:4px 0 0;font-size:11px;opacity:.6">versão 1.0 · 23/06/2026</p>
 </header>
+
+<div id="banner-conn"></div>
 
 <div id="aviso">
   <h2>🛒 Hora de comprar (não deixe acabar):</h2>
@@ -265,10 +269,18 @@ let outbox = JSON.parse(localStorage.getItem("outbox_v1") || "[]");
 
 function salvarOutbox(){ localStorage.setItem("outbox_v1", JSON.stringify(outbox)); }
 function salvarCfg(){ localStorage.setItem("cfg_v1", JSON.stringify(cfg)); }
+let _timerConn = null;
 function setConn(off){
-  const el=document.getElementById("status-conn");
-  if(off){ el.className="off"; el.textContent="⚠ Sem conexão — suas marcações serão enviadas depois."; }
-  else { el.className=""; el.textContent=""; }
+  const el=document.getElementById("banner-conn");
+  clearTimeout(_timerConn);
+  if(off){
+    el.className="offline";
+    el.textContent="❌ Sem internet — suas marcações serão salvas e enviadas quando a conexão voltar";
+  } else {
+    el.className="online";
+    el.textContent="✅ Conectado à internet";
+    _timerConn = setTimeout(()=>{ el.className=""; el.textContent=""; }, 3000);
+  }
 }
 
 // ---------- Auth ----------
