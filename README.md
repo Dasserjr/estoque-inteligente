@@ -1,6 +1,7 @@
-# Estoque Inteligente — Produtos de Limpeza
+# Estoque Inteligente
 
-App de controle de estoque doméstico em **Cloudflare Workers + D1 + PWA**.
+App de controle de estoque doméstico de consumíveis em **Cloudflare Workers + D1 + PWA**.
+Hoje usado para produtos de limpeza, mas o modelo é genérico (qualquer consumível: cozinha, sapato, etc.).
 Fase 1 (fundação) pronta para rodar. Próximas fases em `CLAUDE.md`.
 
 ## Pré-requisitos

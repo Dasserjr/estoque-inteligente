@@ -62,16 +62,16 @@ git branch -M main
 Crie o repositório no GitHub e suba. Duas formas:
 
 **A) Pelo site (mais simples):**
-1. Vá em https://github.com/new → nome `estoque-limpeza` → **Create repository** (deixe vazio, sem README).
-2. Copie a URL que aparece (ex.: `https://github.com/SEU_USUARIO/estoque-limpeza.git`) e rode:
+1. Vá em https://github.com/new → nome `estoque-inteligente` → **Create repository** (deixe vazio, sem README).
+2. Copie a URL que aparece (ex.: `https://github.com/SEU_USUARIO/estoque-inteligente.git`) e rode:
 ```powershell
-git remote add origin https://github.com/SEU_USUARIO/estoque-limpeza.git
+git remote add origin https://github.com/SEU_USUARIO/estoque-inteligente.git
 git push -u origin main
 ```
 
 **B) Pela CLI do GitHub (se tiver o `gh`):**
 ```powershell
-gh repo create estoque-limpeza --private --source=. --push
+gh repo create estoque-inteligente --private --source=. --push
 ```
 
 ---
@@ -120,7 +120,7 @@ Cria as tabelas no banco remoto e publica o site:
 npm run db:init:remote
 npm run deploy
 ```
-O `deploy` mostra a URL pública (`https://estoque-limpeza.SEU_SUBDOMINIO.workers.dev`).
+O `deploy` mostra a URL pública (`https://estoque-inteligente.SEU_SUBDOMINIO.workers.dev`).
 Para deploy automático a cada `git push`, conecte o repo em **Cloudflare → Workers & Pages → Create → connect to Git**.
 
 ---
@@ -149,7 +149,7 @@ Na primeira vez ele pede login (abre o navegador). Depois, é só conversar.
 cd "C:\Users\Usuário\Claude\Projects\Controle produtos de limpeza\estoque-app"
 npm install
 git init && git add . && git commit -m "Fase 1" && git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/estoque-limpeza.git
+git remote add origin https://github.com/SEU_USUARIO/estoque-inteligente.git
 git push -u origin main
 npx wrangler login
 npx wrangler d1 create estoque          # cole o database_id no wrangler.toml

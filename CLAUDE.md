@@ -1,9 +1,13 @@
-# Estoque Inteligente de Produtos de Limpeza
+# Estoque Inteligente
 
 Contexto e convenções para o agente de código. Leia antes de mexer.
 
 ## O que é
-App doméstico de controle de estoque de produtos de limpeza, com dois usuários:
+App doméstico de controle de estoque de **consumíveis em geral** (hoje usado para produtos
+de limpeza, mas o modelo é agnóstico: cozinha, açúcar, cera de sapato, etc. — qualquer item
+que se gasta e se repõe). Parte do núcleo deve ser reaproveitável em outro projeto (prédio),
+então mantenha o core (ledger + catálogo + API) genérico; o que é específico é só o seed e a marca.
+Dois usuários:
 - **Empregada** (usuária principal do dia a dia): marca consumo no app. UI tem que ser grande, simples, à prova de erro, offline. Toda a complexidade fica escondida dela.
 - **Dono** (dasser): mantém o catálogo, confere a lista de compras, recebe alertas.
 
