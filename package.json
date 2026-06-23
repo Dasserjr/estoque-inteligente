@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "start": "node backend/src/index.js",
+    "postinstall": "npm install --prefix backend",
     "dev": "cd backend && npm run dev",
-    "seed": "cd backend && npm run seed",
-    "install:backend": "cd backend && npm install"
+    "seed": "cd backend && npm run seed"
   },
   "engines": {
     "node": "20.x"
