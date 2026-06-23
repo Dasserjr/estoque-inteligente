@@ -143,7 +143,60 @@
   <button id="btnDono" onclick="abrirDono()" style="display:none"><span>🔑</span>Modo dono</button>
   <button id="btnNota" onclick="abrirNota()" style="display:none"><span>📷</span>Nota fiscal</button>
   <button onclick="carregar()"><span>🔄</span>Atualizar</button>
+  <button onclick="abrirAjuda()"><span>❓</span>Ajuda</button>
   <button onclick="sair()"><span>🚪</span>Sair</button>
+</div>
+
+<div class="modal" id="modalAjuda">
+  <div class="folha">
+    <div id="ajudaDono" style="display:none">
+      <h2>❓ Manual do Dono</h2>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">Botões – e +</p>
+        <p style="margin:0;font-size:14px;color:#475569">Registra consumo ou corrige a quantidade de um produto na hora.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">📷 Nota fiscal</p>
+        <p style="margin:0;font-size:14px;color:#475569">Após a compra, fotografe o cupom fiscal. O app lê os produtos e atualiza o estoque automaticamente.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">🔑 Modo dono</p>
+        <p style="margin:0;font-size:14px;color:#475569">Ajusta a quantidade mínima e ideal de cada produto, e permite adicionar novos itens ao catálogo.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">🛒 Lista de compras</p>
+        <p style="margin:0;font-size:14px;color:#475569">Formada automaticamente com os produtos em vermelho. Envie por WhatsApp, e-mail ou copie o texto.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">⚙️ Automações</p>
+        <p style="margin:0;font-size:14px;color:#475569">Toda sexta às 12h: notificação para a Delzita atualizar o estoque.<br>Toda sexta às 18h: e-mail de resumo para você com o consumo da semana.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">🎨 Cores</p>
+        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia<br>🟡 Atenção — chegou em 2 unidades<br>🔴 Comprar — 1 ou menos, já na lista</p>
+      </div>
+    </div>
+    <div id="ajudaEmpregada" style="display:none">
+      <h2>❓ Como usar o app</h2>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">O que fazer toda sexta</p>
+        <p style="margin:0;font-size:14px;color:#475569">Abra o app e aperte <b>–</b> em cada produto que foi aberto ou terminou durante a semana.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">🎨 O que significam as cores</p>
+        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia, não precisa fazer nada<br>🟡 Atenção — chegou em 2, está acabando<br>🔴 Comprar — chegou em 1 ou menos</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">🛒 Lista de compras</p>
+        <p style="margin:0;font-size:14px;color:#475569">Os produtos em vermelho vão automaticamente para a lista no topo da tela. Toque em <b>Copiar</b> e mande para você mesma pelo WhatsApp.</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">❌ App não abre?</p>
+        <p style="margin:0;font-size:14px;color:#475569">Verifique se o celular está com internet e tente novamente. As marcações feitas sem internet são enviadas automaticamente quando a conexão voltar.</p>
+      </div>
+    </div>
+    <button class="fechar" onclick="document.getElementById('modalAjuda').classList.remove('show')">Fechar</button>
+  </div>
 </div>
 
 <div class="modal" id="modalNota">
@@ -366,6 +419,13 @@ async function addProduto(){
   await api("/itens",{method:"POST",body:JSON.stringify({nome_canonico:nome, estoque_inicial:qtd})}).catch(()=>{});
   document.getElementById("novoNome").value=""; document.getElementById("novoQtd").value="1";
   await carregar(); abrirDono();
+}
+
+// ===== AJUDA =====
+function abrirAjuda() {
+  document.getElementById('ajudaDono').style.display = perfil === 'dono' ? '' : 'none';
+  document.getElementById('ajudaEmpregada').style.display = perfil === 'empregada' ? '' : 'none';
+  document.getElementById('modalAjuda').classList.add('show');
 }
 
 // ===== NOTA FISCAL (Fase 2) =====
