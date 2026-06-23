@@ -6,6 +6,25 @@ const { autenticar, exigirDono } = require('../middleware/auth');
 const situacao = (estoque, min) =>
   estoque <= min ? 'comprar' : (estoque <= min + 1 ? 'atencao' : 'ok');
 
+// GET /api/itens/todos — todos os produtos (ativos + inativos), com contagem de compras.
+router.get('/todos', autenticar, exigirDono, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.*,
+        COALESCE(SUM(e.qtd), 0) AS estoque,
+        COUNT(DISTINCT ci.compra_id) AS total_compras,
+        MAX(comp.data) AS ultima_compra
+      FROM catalogo c
+      LEFT JOIN eventos e ON e.catalogo_id = c.id
+      LEFT JOIN compra_itens ci ON ci.catalogo_id = c.id
+      LEFT JOIN compras comp ON comp.id = ci.compra_id
+      GROUP BY c.id
+      ORDER BY c.ativo DESC, c.nome_canonico
+    `);
+    res.json(rows.map(r => ({ ...r, estoque: Number(r.estoque), total_compras: Number(r.total_compras) })));
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // GET /api/itens — itens com estoque, situação, consumo 28d e dias de cobertura.
 router.get('/', autenticar, async (req, res) => {
   try {
@@ -97,6 +116,22 @@ router.put('/:id', autenticar, exigirDono, async (req, res) => {
   } catch (e) {
     res.status(500).json({ erro: e.message });
   }
+});
+
+// DELETE /api/itens/:id — exclui produto sem histórico (só dono).
+router.delete('/:id', autenticar, exigirDono, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ erro: 'id inválido' });
+  try {
+    const { rows: evs } = await pool.query('SELECT COUNT(*) FROM eventos WHERE catalogo_id = $1', [id]);
+    if (Number(evs[0].count) > 0)
+      return res.status(409).json({ erro: 'Produto tem movimentações registradas e não pode ser excluído. Use a opção inativar.' });
+    const { rows: cis } = await pool.query('SELECT COUNT(*) FROM compra_itens WHERE catalogo_id = $1', [id]);
+    if (Number(cis[0].count) > 0)
+      return res.status(409).json({ erro: 'Produto tem histórico de compras e não pode ser excluído. Use a opção inativar.' });
+    await pool.query('DELETE FROM catalogo WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
 module.exports = router;

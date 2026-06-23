@@ -29,9 +29,29 @@ router.get('/lista', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/compras/historico/:id — histórico de compras de um produto.
+router.get('/historico/:id', autenticar, exigirDono, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ erro: 'id inválido' });
+  try {
+    const { rows } = await pool.query(`
+      SELECT comp.data, comp.mercado, ci.descricao_nota, ci.qtd, ci.preco_unit
+      FROM compra_itens ci
+      JOIN compras comp ON comp.id = ci.compra_id
+      WHERE ci.catalogo_id = $1
+      ORDER BY comp.data DESC
+      LIMIT 100
+    `, [id]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // POST /api/compras/foto — recebe imagem base64, extrai itens via IA e retorna sem salvar.
 router.post('/foto', autenticar, exigirDono, async (req, res) => {
   try {
+    const { rows } = await pool.query(`SELECT valor FROM config WHERE chave = 'ia_ativa'`);
+    if (rows[0]?.valor === 'false')
+      return res.status(503).json({ erro: 'Leitura por IA está desativada. Ative em Meus Produtos → Configurações.' });
     const { imagem, mime = 'image/jpeg' } = req.body || {};
     if (!imagem) return res.status(400).json({ erro: 'campo "imagem" obrigatório (base64)' });
     const resultado = await itensDaFoto(imagem, mime);

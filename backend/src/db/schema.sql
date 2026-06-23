@@ -60,6 +60,13 @@ CREATE TABLE IF NOT EXISTS compra_itens (
 );
 CREATE INDEX IF NOT EXISTS idx_compraitens_cat ON compra_itens(catalogo_id);
 
+-- Configurações do sistema (chave/valor).
+CREATE TABLE IF NOT EXISTS config (
+  chave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
+);
+INSERT INTO config (chave, valor) VALUES ('ia_ativa', 'true') ON CONFLICT DO NOTHING;
+
 -- View: estoque atual por produto (soma do ledger).
 CREATE OR REPLACE VIEW v_estoque AS
 SELECT

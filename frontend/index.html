@@ -99,6 +99,35 @@
   .carregando{text-align:center;padding:40px;color:#64748b;}
   .spinner{display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:var(--azul);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px;}
   @keyframes spin{to{transform:rotate(360deg);}}
+  /* Meus Produtos */
+  .modal-full{position:fixed;inset:0;background:#f8fafc;display:none;z-index:20;overflow-y:auto;}
+  .modal-full.show{display:block;}
+  .mf-header{background:var(--azul);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5;}
+  .mf-header h2{margin:0;font-size:19px;flex:1;}
+  .mf-header button{background:none;border:none;color:#fff;font-size:26px;cursor:pointer;padding:0 4px;}
+  .mf-corpo{padding:0 12px 90px;}
+  .secao-titulo{font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;padding:14px 0 6px;}
+  .card-prod{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border:1.5px solid #e2e8f0;}
+  .card-prod.inativo{opacity:.55;background:#f8fafc;}
+  .card-prod-topo{display:flex;align-items:flex-start;gap:10px;}
+  .card-prod-ic{font-size:28px;line-height:1;flex:none;}
+  .card-prod-nm{font-size:15px;font-weight:700;line-height:1.2;}
+  .card-prod-inf{font-size:12px;color:#64748b;margin-top:2px;}
+  .card-prod-acoes{display:flex;gap:8px;margin-top:10px;}
+  .btn-ac{flex:1;padding:8px 4px;border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600;text-align:center;}
+  .btn-ac.az{border-color:var(--azul);color:var(--azul);background:#eff6ff;}
+  .btn-ac.vd{border-color:var(--verde);color:var(--verde);background:var(--verde-bg);}
+  .btn-ac.vm{border-color:var(--vermelho);color:var(--vermelho);background:var(--vermelho-bg);}
+  /* Toggle IA */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+  .tgl{position:relative;display:inline-block;width:46px;height:26px;flex:none;}
+  .tgl input{opacity:0;width:0;height:0;}
+  .tgl-sl{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:26px;transition:.3s;}
+  .tgl-sl:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+  .tgl input:checked+.tgl-sl{background:var(--verde);}
+  .tgl input:checked+.tgl-sl:before{transform:translateX(20px);}
+  /* Indicador IA no header */
+  #iaIndicador{display:none;font-size:11px;margin-top:3px;font-weight:700;opacity:.9;}
   #login{position:fixed;inset:0;background:#0ea5e9;display:flex;align-items:center;justify-content:center;z-index:50;padding:24px;}
   #login .box{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.2);}
   #login h1{margin:0 0 6px;font-size:24px;}
@@ -126,6 +155,7 @@
   <p>Toque em <b>–</b> cada vez que abrir/gastar um produto</p>
   <div id="status-conn"></div>
   <p id="versaoHeader" style="margin:4px 0 0;font-size:11px;opacity:.6"></p>
+  <div id="iaIndicador"></div>
 </header>
 
 <div id="banner-conn"></div>
@@ -147,6 +177,7 @@
 <div class="rodape">
   <button id="btnDono" onclick="abrirDono()" style="display:none"><span>🔑</span>Modo dono</button>
   <button id="btnNota" onclick="abrirNota()" style="display:none"><span>📷</span>Nota fiscal</button>
+  <button id="btnProdutos" onclick="abrirMeusProdutos()" style="display:none"><span>📦</span>Produtos</button>
   <button onclick="carregar()"><span>🔄</span>Atualizar</button>
   <button onclick="abrirAjuda()"><span>❓</span>Ajuda</button>
   <button onclick="sair()"><span>🚪</span>Sair</button>
@@ -260,6 +291,87 @@
   </div>
 </div>
 
+<!-- ===== MEUS PRODUTOS (tela cheia) ===== -->
+<div class="modal-full" id="modalMeusProdutos">
+  <div class="mf-header">
+    <button onclick="document.getElementById('modalMeusProdutos').classList.remove('show')">←</button>
+    <h2>📦 Meus Produtos</h2>
+  </div>
+  <div class="mf-corpo" id="listaMeusProdutos"></div>
+</div>
+
+<!-- ===== EDITAR PRODUTO ===== -->
+<div class="modal" id="modalEditarProduto">
+  <div class="folha">
+    <h2>✏️ Editar Produto</h2>
+    <input type="hidden" id="editId">
+    <div class="cfgBox">
+      <label>Ícone</label>
+      <input id="editIcone" placeholder="🧴" style="width:70px;font-size:22px">
+      <label>Nome *</label>
+      <input id="editNome" type="text" placeholder="Ex: Bom Ar, Detergente...">
+      <label>Categoria</label>
+      <input id="editCategoria" type="text" placeholder="Ex: Limpeza, Cozinha">
+      <label>Unidade</label>
+      <input id="editUnidade" type="text" placeholder="unidade, pacote, litro...">
+      <label>Tamanho</label>
+      <input id="editTamanho" type="text" placeholder="Ex: 360ml, 500g">
+      <label>Setor</label>
+      <input id="editSetor" type="text" placeholder="Ex: Dispensa, Banheiro">
+    </div>
+    <div class="cfgBox">
+      <label>Nível mínimo *</label>
+      <input id="editMin" type="number" min="1" value="1">
+      <label>Nível ideal</label>
+      <input id="editIdeal" type="number" min="1" value="2">
+      <label>Lead time (dias até reposição)</label>
+      <input id="editLead" type="number" min="1" value="7">
+    </div>
+    <button id="btnInativarProduto" class="secundario" onclick="toggleInativoProduto()" style="margin-top:4px"></button>
+    <button class="fechar" onclick="salvarProduto()">Salvar</button>
+    <button class="secundario" onclick="document.getElementById('modalEditarProduto').classList.remove('show')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===== HISTÓRICO DE COMPRAS ===== -->
+<div class="modal" id="modalHistorico">
+  <div class="folha">
+    <h2 id="historicoTitulo" style="font-size:17px"></h2>
+    <p class="sub">Histórico de compras registradas via nota fiscal</p>
+    <div id="listaHistorico"></div>
+    <button class="fechar" onclick="document.getElementById('modalHistorico').classList.remove('show')">Fechar</button>
+  </div>
+</div>
+
+<!-- ===== NOVO PRODUTO ===== -->
+<div class="modal" id="modalNovoProduto">
+  <div class="folha">
+    <h2>➕ Novo Produto</h2>
+    <div id="npOrigem"></div>
+    <div class="cfgBox">
+      <label>Ícone</label>
+      <input id="npIcone" placeholder="🧴" style="width:70px;font-size:22px">
+      <label>Nome *</label>
+      <input id="npNome" type="text" placeholder="Ex: Bom Ar, Detergente 500ml">
+      <label>Categoria</label>
+      <input id="npCategoria" type="text" placeholder="Ex: Limpeza, Cozinha">
+      <label>Unidade</label>
+      <input id="npUnidade" type="text" value="unidade" placeholder="unidade, pacote, litro...">
+      <label>Tamanho</label>
+      <input id="npTamanho" type="text" placeholder="Ex: 360ml, 500g (opcional)">
+    </div>
+    <div class="cfgBox">
+      <label>Nível mínimo * (alerta de reposição)</label>
+      <input id="npMin" type="number" min="1" value="1">
+      <label>Nível ideal (quanto manter em casa)</label>
+      <input id="npIdeal" type="number" min="1" value="2">
+    </div>
+    <p class="small">* obrigatórios · os níveis podem ser ajustados depois em Meus Produtos</p>
+    <button class="fechar" onclick="salvarNovoProduto()">Cadastrar produto</button>
+    <button class="secundario" onclick="document.getElementById('modalNovoProduto').classList.remove('show')">Cancelar</button>
+  </div>
+</div>
+
 <script>
 const API = "/api";
 let itens = [];
@@ -295,9 +407,12 @@ async function entrar(){
     token=d.token; perfil=d.perfil;
     localStorage.setItem("token_v1",token); localStorage.setItem("perfil_v1",perfil);
     document.getElementById("login").style.display="none";
-    document.getElementById("btnDono").style.display = perfil==="dono" ? "" : "none";
-    document.getElementById("btnNota").style.display = perfil==="dono" ? "" : "none";
+    const isDono = perfil==="dono";
+    document.getElementById("btnDono").style.display = isDono ? "" : "none";
+    document.getElementById("btnNota").style.display = isDono ? "" : "none";
+    document.getElementById("btnProdutos").style.display = isDono ? "" : "none";
     carregar();
+    if(isDono) carregarConfig();
     subscribeNotificacoes();
   }catch(e){ err.textContent="Erro de conexão."; }
 }
@@ -311,7 +426,11 @@ async function api(path, opts={}){
   if(opts.body) headers["Content-Type"]="application/json";
   const r=await fetch(API+path, Object.assign({}, opts, {headers}));
   if(r.status===401){ const e=new Error("auth"); e.auth=true; sair(); throw e; }
-  if(!r.ok) throw new Error("http "+r.status);
+  if(!r.ok){
+    let msg="http "+r.status;
+    try{ const d=await r.json(); if(d.erro) msg=d.erro; }catch(x){}
+    throw new Error(msg);
+  }
   return r;
 }
 
@@ -554,6 +673,7 @@ function renderResultado(dados) {
         <div class="pend-desc">${p.descricao}</div>
         <div class="pend-sugest">
           ${(p.sugestoes||[]).map(s=>`<button onclick="vincularPend(${p.compra_item_id},${s.catalogo_id},this)">${s.base}</button>`).join('')}
+          <button style="border-color:#6366f1;color:#6366f1" onclick="abrirNovoProduto({compraItemId:${p.compra_item_id},descricaoNota:'${p.descricao.replace(/'/g,"\\'")}',precoUnit:${p.preco_unit||null}})">➕ Cadastrar novo</button>
           <button class="ignorar" onclick="ignorarPend(${p.compra_item_id},this)">Ignorar</button>
         </div>
       </div>`).join('');
@@ -576,6 +696,278 @@ function ignorarPend(compraItemId, btn) {
   const bloco = document.getElementById('pend-'+compraItemId);
   bloco.querySelectorAll('button').forEach(b => b.disabled = true);
   btn.classList.add('sel');
+}
+
+// ===== CONFIG / IA =====
+let iaAtiva = true;
+
+async function carregarConfig() {
+  try {
+    const r = await api('/config');
+    const c = await r.json();
+    iaAtiva = c.ia_ativa !== false;
+    atualizarIndicadorIA();
+  } catch(e) {}
+}
+
+function atualizarIndicadorIA() {
+  const el = document.getElementById('iaIndicador');
+  el.style.display = '';
+  el.textContent = iaAtiva ? '🤖 IA ativa' : '⚫ IA desativada';
+  el.style.opacity = iaAtiva ? '.85' : '.6';
+  const tog = document.getElementById('toggleIA');
+  if (tog) tog.checked = iaAtiva;
+}
+
+async function toggleIA(ativo) {
+  try {
+    await api('/config/ia', { method:'POST', body: JSON.stringify({ ativo }) });
+    iaAtiva = ativo;
+    atualizarIndicadorIA();
+  } catch(e) { alert('Erro ao alterar configuração de IA.'); }
+}
+
+// ===== MEUS PRODUTOS =====
+let todosItens = [];
+
+async function abrirMeusProdutos() {
+  document.getElementById('modalMeusProdutos').classList.add('show');
+  await carregarTodos();
+}
+
+async function carregarTodos() {
+  document.getElementById('listaMeusProdutos').innerHTML = '<div class="carregando"><div class="spinner"></div><br>Carregando...</div>';
+  try {
+    const r = await api('/itens/todos');
+    todosItens = await r.json();
+    renderMeusProdutos();
+  } catch(e) {
+    document.getElementById('listaMeusProdutos').innerHTML = '<p style="color:var(--vermelho);padding:16px">Erro ao carregar produtos.</p>';
+  }
+}
+
+function renderMeusProdutos() {
+  const ativos = todosItens.filter(p => p.ativo);
+  const inativos = todosItens.filter(p => !p.ativo);
+  let html = `
+    <div class="cfgBox" style="margin:12px 0 0">
+      <div class="toggle-row">
+        <div>
+          <div style="font-weight:700;font-size:15px">🤖 Leitura de nota por IA</div>
+          <div style="font-size:13px;color:#64748b">Claude lê a foto do cupom fiscal</div>
+        </div>
+        <label class="tgl">
+          <input type="checkbox" id="toggleIA" ${iaAtiva?'checked':''} onchange="toggleIA(this.checked)">
+          <span class="tgl-sl"></span>
+        </label>
+      </div>
+    </div>
+    <div class="secao-titulo">✅ Ativos (${ativos.length})</div>`;
+  html += ativos.map(renderCardProd).join('');
+  if (inativos.length) {
+    html += `<div class="secao-titulo">⬜ Inativos (${inativos.length})</div>`;
+    html += inativos.map(renderCardProd).join('');
+  }
+  html += `<button class="fechar" style="margin-top:16px" onclick="abrirNovoProduto()">＋ Cadastrar novo produto</button>`;
+  document.getElementById('listaMeusProdutos').innerHTML = html;
+}
+
+function renderCardProd(p) {
+  const nc = Number(p.total_compras);
+  const inf = [p.categoria, p.unidade].filter(Boolean).join(' · ');
+  const compras = nc > 0 ? `${nc} compra${nc>1?'s':''}` : 'Sem compras';
+  const ult = p.ultima_compra ? ` · última ${new Date(p.ultima_compra).toLocaleDateString('pt-BR')}` : '';
+  if (p.ativo) {
+    return `<div class="card-prod">
+      <div class="card-prod-topo">
+        <div class="card-prod-ic">${p.icone||'🧴'}</div>
+        <div><div class="card-prod-nm">${p.nome_canonico}</div>
+        <div class="card-prod-inf">${inf}${inf?' · ':''}mín ${p.min_nivel} / ideal ${p.par_level}</div>
+        <div class="card-prod-inf">${compras}${ult}</div></div>
+      </div>
+      <div class="card-prod-acoes">
+        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${p.nome_canonico.replace(/'/g,"\\'")}')">📋 Histórico</button>
+        <button class="btn-ac az" onclick="abrirEditar(${p.id})">✏️ Editar</button>
+      </div></div>`;
+  } else {
+    return `<div class="card-prod inativo">
+      <div class="card-prod-topo">
+        <div class="card-prod-ic">${p.icone||'🧴'}</div>
+        <div><div class="card-prod-nm">${p.nome_canonico} <span style="font-size:11px;color:#94a3b8">(inativo)</span></div>
+        <div class="card-prod-inf">${compras}${ult}</div></div>
+      </div>
+      <div class="card-prod-acoes">
+        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${p.nome_canonico.replace(/'/g,"\\'")}')">📋 Histórico</button>
+        <button class="btn-ac vd" onclick="reativarProduto(${p.id})">↺ Reativar</button>
+        <button class="btn-ac vm" onclick="excluirProduto(${p.id})">🗑️</button>
+      </div></div>`;
+  }
+}
+
+// ===== EDITAR PRODUTO =====
+function abrirEditar(id) {
+  const p = todosItens.find(x => x.id === id); if (!p) return;
+  document.getElementById('editId').value = id;
+  document.getElementById('editIcone').value = p.icone || '🧴';
+  document.getElementById('editNome').value = p.nome_canonico;
+  document.getElementById('editCategoria').value = p.categoria || '';
+  document.getElementById('editUnidade').value = p.unidade || 'unidade';
+  document.getElementById('editTamanho').value = p.tamanho || '';
+  document.getElementById('editSetor').value = p.setor || '';
+  document.getElementById('editMin').value = p.min_nivel;
+  document.getElementById('editIdeal').value = p.par_level;
+  document.getElementById('editLead').value = p.lead_time_dias || 7;
+  const btn = document.getElementById('btnInativarProduto');
+  btn.textContent = p.ativo ? '🚫 Inativar produto' : '✅ Reativar produto';
+  btn.dataset.ativo = p.ativo ? '1' : '0';
+  btn.style.color = p.ativo ? 'var(--vermelho)' : 'var(--verde)';
+  btn.style.borderColor = p.ativo ? 'var(--vermelho)' : 'var(--verde)';
+  document.getElementById('modalEditarProduto').classList.add('show');
+}
+
+async function salvarProduto() {
+  const id = +document.getElementById('editId').value;
+  const nome = document.getElementById('editNome').value.trim();
+  if (!nome) { alert('Nome é obrigatório.'); return; }
+  const body = {
+    icone: document.getElementById('editIcone').value.trim() || '🧴',
+    nome_canonico: nome,
+    categoria: document.getElementById('editCategoria').value.trim(),
+    unidade: document.getElementById('editUnidade').value.trim() || 'unidade',
+    tamanho: document.getElementById('editTamanho').value.trim(),
+    setor: document.getElementById('editSetor').value.trim(),
+    min_nivel: +document.getElementById('editMin').value || 1,
+    par_level: +document.getElementById('editIdeal').value || 2,
+    lead_time_dias: +document.getElementById('editLead').value || 7,
+  };
+  try {
+    await api(`/itens/${id}`, { method:'PUT', body: JSON.stringify(body) });
+    document.getElementById('modalEditarProduto').classList.remove('show');
+    await carregarTodos(); carregar();
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
+}
+
+async function toggleInativoProduto() {
+  const id = +document.getElementById('editId').value;
+  const ativo = document.getElementById('btnInativarProduto').dataset.ativo === '1';
+  if (ativo && !confirm('Inativar este produto? Ele sairá da lista principal, mas o histórico fica preservado.')) return;
+  try {
+    await api(`/itens/${id}`, { method:'PUT', body: JSON.stringify({ ativo: !ativo }) });
+    document.getElementById('modalEditarProduto').classList.remove('show');
+    await carregarTodos(); carregar();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function reativarProduto(id) {
+  try {
+    await api(`/itens/${id}`, { method:'PUT', body: JSON.stringify({ ativo: true }) });
+    await carregarTodos(); carregar();
+  } catch(e) { alert('Erro ao reativar: ' + e.message); }
+}
+
+async function excluirProduto(id) {
+  const p = todosItens.find(x => x.id === id);
+  if (!confirm(`Excluir "${p?.nome_canonico}"?\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    await api(`/itens/${id}`, { method:'DELETE' });
+    await carregarTodos();
+  } catch(e) { alert(e.message); }
+}
+
+// ===== HISTÓRICO DE COMPRAS =====
+async function abrirHistorico(id, nome) {
+  document.getElementById('historicoTitulo').textContent = '📋 ' + nome;
+  document.getElementById('listaHistorico').innerHTML = '<div class="carregando"><div class="spinner"></div><br>Carregando...</div>';
+  document.getElementById('modalHistorico').classList.add('show');
+  try {
+    const r = await api(`/compras/historico/${id}`);
+    const rows = await r.json();
+    if (!rows.length) {
+      document.getElementById('listaHistorico').innerHTML = '<p style="color:#64748b;text-align:center;padding:24px">Nenhuma compra registrada via nota fiscal.</p>';
+      return;
+    }
+    const comPreco = rows.filter(d => d.preco_unit != null);
+    const media = comPreco.length ? comPreco.reduce((s,d) => s+Number(d.preco_unit), 0) / comPreco.length : null;
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:14px">
+      <thead><tr style="color:#94a3b8;font-size:12px;font-weight:700;border-bottom:2px solid #f1f5f9">
+        <th style="text-align:left;padding:6px 4px">Data</th>
+        <th style="text-align:left;padding:6px 4px">Descrição na nota</th>
+        <th style="text-align:right;padding:6px 4px;white-space:nowrap">Preço unit.</th>
+      </tr></thead><tbody>`;
+    rows.forEach(d => {
+      html += `<tr style="border-bottom:1px solid #f8fafc">
+        <td style="padding:8px 4px;white-space:nowrap;color:#64748b">${new Date(d.data).toLocaleDateString('pt-BR')}</td>
+        <td style="padding:8px 4px;font-size:13px">${d.descricao_nota || '—'}</td>
+        <td style="padding:8px 4px;text-align:right;font-weight:600">${d.preco_unit!=null?'R$&nbsp;'+Number(d.preco_unit).toFixed(2):'—'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    if (media != null) {
+      html += `<div style="margin-top:14px;font-size:13px;color:#64748b;background:#f8fafc;border-radius:10px;padding:10px">
+        Preço médio: <b>R$ ${media.toFixed(2)}</b>
+        ${rows[0].preco_unit!=null?' · Última compra: <b>R$ '+Number(rows[0].preco_unit).toFixed(2)+'</b>':''}
+      </div>`;
+    }
+    document.getElementById('listaHistorico').innerHTML = html;
+  } catch(e) {
+    document.getElementById('listaHistorico').innerHTML = '<p style="color:var(--vermelho);padding:16px">Erro ao carregar histórico.</p>';
+  }
+}
+
+// ===== NOVO PRODUTO =====
+let novoProdutoCtx = null;
+
+function abrirNovoProduto(ctx) {
+  novoProdutoCtx = ctx || null;
+  document.getElementById('npIcone').value = '🧴';
+  document.getElementById('npNome').value = ctx?.descricaoNota ? _capitalizarNome(ctx.descricaoNota) : '';
+  document.getElementById('npCategoria').value = '';
+  document.getElementById('npUnidade').value = 'unidade';
+  document.getElementById('npTamanho').value = '';
+  document.getElementById('npMin').value = '1';
+  document.getElementById('npIdeal').value = '2';
+  const orig = document.getElementById('npOrigem');
+  if (ctx?.descricaoNota) {
+    const preco = ctx.precoUnit != null ? ' · R$ '+Number(ctx.precoUnit).toFixed(2) : '';
+    orig.innerHTML = `<div style="background:#fef3c7;border-radius:10px;padding:10px;margin-bottom:12px;font-size:13px;color:#92400e">
+      <b>Da nota fiscal:</b> "${ctx.descricaoNota}"${preco}</div>`;
+  } else { orig.innerHTML = ''; }
+  document.getElementById('modalNovoProduto').classList.add('show');
+}
+
+function _capitalizarNome(t) {
+  return t.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()).substring(0, 60).trim();
+}
+
+async function salvarNovoProduto() {
+  const nome = document.getElementById('npNome').value.trim();
+  if (!nome) { alert('Nome é obrigatório.'); return; }
+  const body = {
+    icone: document.getElementById('npIcone').value.trim() || '🧴',
+    nome_canonico: nome,
+    categoria: document.getElementById('npCategoria').value.trim(),
+    unidade: document.getElementById('npUnidade').value.trim() || 'unidade',
+    tamanho: document.getElementById('npTamanho').value.trim(),
+    min_nivel: +document.getElementById('npMin').value || 1,
+    par_level: +document.getElementById('npIdeal').value || 2,
+  };
+  try {
+    const r = await api('/itens', { method:'POST', body: JSON.stringify(body) });
+    const { id } = await r.json();
+    if (novoProdutoCtx?.compraItemId) {
+      await api('/compras/confirmar', { method:'POST', body: JSON.stringify({
+        compra_item_id: novoProdutoCtx.compraItemId, catalogo_id: id, aprender: true
+      })});
+      const bloco = document.getElementById('pend-'+novoProdutoCtx.compraItemId);
+      if (bloco) {
+        bloco.querySelectorAll('button').forEach(b => b.disabled = true);
+        bloco.insertAdjacentHTML('beforeend', `<div style="color:var(--verde);font-size:13px;margin-top:6px">✅ Cadastrado como "${nome}"</div>`);
+      }
+    }
+    document.getElementById('modalNovoProduto').classList.remove('show');
+    if (document.getElementById('modalMeusProdutos').classList.contains('show')) await carregarTodos();
+    carregar();
+  } catch(e) { alert('Erro ao cadastrar: ' + e.message); }
 }
 
 fetch('/api/versao').then(r=>r.json()).then(d=>{
@@ -612,9 +1004,12 @@ async function subscribeNotificacoes() {
 
 if(token){
   document.getElementById("login").style.display="none";
-  document.getElementById("btnDono").style.display = perfil==="dono" ? "" : "none";
-    document.getElementById("btnNota").style.display = perfil==="dono" ? "" : "none";
+  const _isDono = perfil==="dono";
+  document.getElementById("btnDono").style.display = _isDono ? "" : "none";
+  document.getElementById("btnNota").style.display = _isDono ? "" : "none";
+  document.getElementById("btnProdutos").style.display = _isDono ? "" : "none";
   carregar();
+  if(_isDono) carregarConfig();
 }
 </script>
 </body>

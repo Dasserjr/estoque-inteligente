@@ -1,5 +1,33 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.1.3 · 23/06/2026
+
+### Gestão de Produtos (pré-Fase 3)
+
+#### Tela "Meus Produtos" (menu do dono)
+- Lista visual de todos os produtos — ativos e inativos — com quantidade de compras e data da última
+- Edição completa de cada produto: nome, ícone, categoria, unidade, tamanho, setor, mínimo, ideal, lead time
+- Inativar produto: sai da lista principal, histórico preservado
+- Reativar produto com um toque
+- Excluir produto: só permitido se não houver nenhum histórico (movimentações ou compras)
+- Histórico de compras por produto: tabela com data, descrição exata da nota fiscal e preço unitário, com preço médio e última compra
+
+#### Novo produto diretamente na nota fiscal
+- Itens não reconhecidos na nota agora oferecem botão "Cadastrar novo"
+- Abre formulário pré-preenchido com texto e preço da nota; dono ajusta nome canônico e confirma
+- Após confirmação, item é vinculado automaticamente ao produto recém-criado
+
+#### Toggle de IA
+- Botão liga/desliga para leitura de nota fiscal por IA (em Meus Produtos → Configurações)
+- Indicador no cabeçalho mostra status da IA (🤖 IA ativa / ⚫ IA desativada) — visível ao dono
+- Se IA desativada, rota /foto retorna mensagem clara em vez de consumir créditos da API
+
+#### Infraestrutura
+- Nova tabela `config` no banco (chave/valor) para persistir configurações entre reinicializações
+- Novas rotas: `GET /api/config`, `POST /api/config/ia`, `GET /api/itens/todos`, `DELETE /api/itens/:id`, `GET /api/compras/historico/:id`
+
+---
+
 ## versão 1.1.2 · 23/06/2026
 
 ### Documentação
