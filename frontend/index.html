@@ -16,9 +16,10 @@
   header h1{margin:0;font-size:22px;}
   header p{margin:4px 0 0;font-size:14px;opacity:.92;}
   #status-conn{display:none;}
-  #banner-conn{position:sticky;top:64px;z-index:9;text-align:center;font-size:16px;font-weight:700;padding:12px 16px;display:none;transition:background .3s;}
+  #banner-conn{display:none;position:sticky;top:0;z-index:11;text-align:center;font-size:20px;font-weight:800;padding:18px 16px;letter-spacing:.3px;box-shadow:0 4px 12px rgba(0,0,0,.25);}
   #banner-conn.online{display:block;background:#16a34a;color:#fff;}
-  #banner-conn.offline{display:block;background:#dc2626;color:#fff;}
+  #banner-conn.offline{display:block;background:#dc2626;color:#fff;animation:piscar 1s ease-in-out 3;}
+  @keyframes piscar{0%,100%{opacity:1;}50%{opacity:.5;}}
   #aviso{margin:12px;border-radius:16px;background:var(--vermelho-bg);border:2px solid var(--vermelho);padding:14px 16px;display:none;}
   #aviso.show{display:block;}
   #aviso h2{margin:0 0 6px;font-size:17px;color:var(--vermelho);}
