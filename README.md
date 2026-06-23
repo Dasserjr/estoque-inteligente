@@ -18,7 +18,7 @@ backend/
 frontend/               PWA (index.html, sw.js, manifest, icon)
 ```
 
-## Rodar (resumo — passo a passo completo em GUIA-INICIO.md)
+## Rodar (resumo — passo a passo completo em docs/GUIA-INICIO.md)
 ```bash
 cd backend && npm install && cd ..
 cp backend/.env.example backend/.env     # preencha DATABASE_URL, JWT_SECRET, senhas
@@ -36,4 +36,4 @@ npm run dev                               # http://localhost:3000
 - ⏳ Fase 2: leitura da nota (NFC-e/foto) — `modulo-compras/notas.js` tem o esboço.
 - ⏳ Fase 3: previsões, dashboard, alerta automático.
 
-Ver CLAUDE.md (convenções/roadmap) e MODULO-COMPRAS.md (portabilidade p/ o prédio).
+Ver CLAUDE.md (convenções/roadmap) e docs/MODULO-COMPRAS.md (portabilidade p/ o prédio).

@@ -63,10 +63,10 @@ git push
 claude
 ```
 Mensagem sugerida para colar:
-> Leia CLAUDE.md, README.md e MODULO-COMPRAS.md. Stack Express + PostgreSQL, Fase 1 pronta.
+> Leia CLAUDE.md, README.md e docs/MODULO-COMPRAS.md. Stack Express + PostgreSQL, Fase 1 pronta.
 > Quero a Fase 2 (leitura da nota fiscal). Implemente os adaptadores em
 > modulo-compras/notas.js (foto por IA como padrão) e a tela de confirmação dos itens
-> pendentes. Mantenha modulo-compras/ agnóstico (sem Express), como descrito no MODULO-COMPRAS.md.
+> pendentes. Mantenha modulo-compras/ agnóstico (sem Express), como descrito no docs/MODULO-COMPRAS.md.
 > Antes de codar, explique o plano e o que precisa de mim (uma foto de nota real).
 
 ## Se travar

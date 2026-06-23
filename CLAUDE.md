@@ -70,4 +70,4 @@ confirmarItem, itensDaFoto (implementado — delega a `src/ai/foto.js`). Não ac
 
 ## Reaproveitamento (panorama-patrimonio)
 Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, e criar uma rota
-Express no padrão de lá. Ver MODULO-COMPRAS.md.
+Express no padrão de lá. Ver docs/MODULO-COMPRAS.md.
