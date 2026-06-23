@@ -16,6 +16,9 @@ app.use('/api', require('./routes/auth'));          // POST /api/login
 app.use('/api/itens', require('./routes/itens'));
 app.use('/api/compras', require('./routes/compras'));
 app.use('/api/push', require('./routes/push'));
+const _pkg = require('../../package.json');
+const _build = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || 'local';
+app.get('/api/versao', (req, res) => res.json({ versao: _pkg.version, build: _build }));
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 require('./services/scheduler').iniciarAgendador();

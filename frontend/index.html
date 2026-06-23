@@ -117,7 +117,7 @@
     <input id="senha" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter')entrar()">
     <button onclick="entrar()">Entrar</button>
     <div class="erro" id="loginErro"></div>
-    <p style="margin:16px 0 0;font-size:12px;color:#94a3b8">versão 1.0 · 23/06/2026</p>
+    <p id="versaoLogin" style="margin:16px 0 0;font-size:12px;color:#94a3b8"></p>
   </div>
 </div>
 
@@ -125,7 +125,7 @@
   <h1>🏠 Estoque de Casa</h1>
   <p>Toque em <b>–</b> cada vez que abrir/gastar um produto</p>
   <div id="status-conn"></div>
-  <p style="margin:4px 0 0;font-size:11px;opacity:.6">versão 1.0 · 23/06/2026</p>
+  <p id="versaoHeader" style="margin:4px 0 0;font-size:11px;opacity:.6"></p>
 </header>
 
 <div id="banner-conn"></div>
@@ -577,6 +577,12 @@ function ignorarPend(compraItemId, btn) {
   bloco.querySelectorAll('button').forEach(b => b.disabled = true);
   btn.classList.add('sel');
 }
+
+fetch('/api/versao').then(r=>r.json()).then(d=>{
+  const txt = `versão ${d.versao} · ${d.build}`;
+  document.getElementById('versaoLogin').textContent = txt;
+  document.getElementById('versaoHeader').textContent = txt;
+}).catch(()=>{});
 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
 
