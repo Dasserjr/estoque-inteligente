@@ -128,6 +128,33 @@
   .tgl input:checked+.tgl-sl:before{transform:translateX(20px);}
   /* Indicador IA no header */
   #iaIndicador{display:none;font-size:11px;margin-top:3px;font-weight:700;opacity:.9;}
+  /* Gastos por categoria */
+  .periodo-tabs{display:flex;gap:6px;margin:12px 0 16px;}
+  .periodo-tab{flex:1;padding:9px 4px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;text-align:center;}
+  .periodo-tab.ativo{background:var(--azul);color:#fff;border-color:var(--azul);}
+  .gasto-total{font-size:28px;font-weight:800;color:var(--texto);margin:0 0 16px;}
+  .gasto-total span{font-size:14px;font-weight:500;color:#64748b;}
+  .gasto-cat{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;border:1.5px solid #e2e8f0;}
+  .gasto-cat-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .gasto-cat-nm{font-size:15px;font-weight:700;}
+  .gasto-cat-val{font-size:15px;font-weight:700;color:var(--azul);}
+  .gasto-cat-pct{font-size:12px;color:#94a3b8;margin-bottom:6px;}
+  .gasto-bar-wrap{background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden;}
+  .gasto-bar{height:100%;background:var(--azul);border-radius:6px;}
+  /* Gráfico anual */
+  .grafico-anual{margin:16px 0 0;background:#fff;border-radius:12px;border:1.5px solid #e2e8f0;padding:14px 10px 10px;}
+  .grafico-anual h3{margin:0 0 14px;font-size:14px;font-weight:700;color:#334155;}
+  .grafico-anual-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .grafico-anual-nav span{font-size:14px;font-weight:700;color:#334155;}
+  .grafico-anual-nav button{background:none;border:1.5px solid #e2e8f0;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;color:#64748b;}
+  .bars-wrap{display:flex;align-items:flex-end;gap:3px;height:90px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .bar-fill{width:100%;border-radius:3px 3px 0 0;background:#bfdbfe;min-height:2px;}
+  .bar-col.tem-dado .bar-fill{background:var(--azul);}
+  .bar-col.mes-atual .bar-fill{background:#6366f1;}
+  .bar-lbl{font-size:9px;color:#94a3b8;text-align:center;}
+  .grafico-total-ano{text-align:center;margin-top:8px;font-size:12px;color:#64748b;}
+  .aviso-dados{background:#fef3c7;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.4;}
   #login{position:fixed;inset:0;background:#0ea5e9;display:flex;align-items:center;justify-content:center;z-index:50;padding:24px;}
   #login .box{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.2);}
   #login h1{margin:0 0 6px;font-size:24px;}
@@ -178,6 +205,7 @@
   <button id="btnDono" onclick="abrirDono()" style="display:none"><span>🔑</span>Modo dono</button>
   <button id="btnNota" onclick="abrirNota()" style="display:none"><span>📷</span>Nota fiscal</button>
   <button id="btnProdutos" onclick="abrirMeusProdutos()" style="display:none"><span>📦</span>Produtos</button>
+  <button id="btnGastos" onclick="abrirGastos()" style="display:none"><span>💰</span>Gastos</button>
   <button onclick="carregar()"><span>🔄</span>Atualizar</button>
   <button onclick="abrirAjuda()"><span>❓</span>Ajuda</button>
   <button onclick="sair()"><span>🚪</span>Sair</button>
@@ -294,6 +322,15 @@
     <h2>📦 Meus Produtos</h2>
   </div>
   <div class="mf-corpo" id="listaMeusProdutos"></div>
+</div>
+
+<!-- ===== GASTOS POR CATEGORIA (tela cheia) ===== -->
+<div class="modal-full" id="modalGastos">
+  <div class="mf-header">
+    <button onclick="document.getElementById('modalGastos').classList.remove('show')">←</button>
+    <h2>💰 Gastos</h2>
+  </div>
+  <div class="mf-corpo" id="conteudoGastos"></div>
 </div>
 
 <!-- ===== EDITAR PRODUTO ===== -->
@@ -424,6 +461,7 @@ async function entrar(){
     document.getElementById("btnDono").style.display = isDono ? "" : "none";
     document.getElementById("btnNota").style.display = isDono ? "" : "none";
     document.getElementById("btnProdutos").style.display = isDono ? "" : "none";
+    document.getElementById("btnGastos").style.display = isDono ? "" : "none";
     carregar();
     if(isDono) carregarConfig();
     subscribeNotificacoes();
@@ -495,7 +533,7 @@ function render(){
     .sort((a,b)=>ordem[a.situacao]-ordem[b.situacao]||a.nome_canonico.localeCompare(b.nome_canonico))
     .forEach(i=>{
       const txt=i.situacao==="comprar"?"Comprar":(i.situacao==="atencao"?"Atenção":"Ok");
-      const dias=i.dias_cobertura?` · ~${i.dias_cobertura}d`:"";
+      const dias=i.dias_cobertura?` · acaba em ~${i.dias_cobertura} dias`:"";
       const card=document.createElement("div"); card.className="card "+i.situacao;
       card.innerHTML=`<div class="icone">${i.icone||"🧴"}</div>
         <div class="info"><div class="nome">${i.nome_canonico}</div>
@@ -561,6 +599,83 @@ function irParaNovoProduto() {
   fecharDono();
   abrirNovoProduto();
 }
+
+// ===== GASTOS POR CATEGORIA =====
+let _periodoGastos = 30;
+let _anoGastos = new Date().getFullYear();
+
+async function abrirGastos() {
+  document.getElementById('modalGastos').classList.add('show');
+  await carregarGastos();
+}
+
+async function carregarGastos() {
+  const el = document.getElementById('conteudoGastos');
+  el.innerHTML = '<div class="carregando"><div class="spinner"></div><br>Carregando...</div>';
+  try {
+    const [gData, mData] = await Promise.all([
+      api(`/compras/gastos?periodo=${_periodoGastos}`),
+      api(`/compras/gastos/mensal?ano=${_anoGastos}`)
+    ]);
+    renderGastos(gData, mData);
+  } catch(e) {
+    el.innerHTML = `<div class="carregando">Erro ao carregar dados.</div>`;
+  }
+}
+
+function renderGastos(gData, mData) {
+  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesAtual = new Date().getMonth() + 1;
+  const maxMes = Math.max(...mData.meses.map(m => m.total), 0.01);
+  const anoAtual = new Date().getFullYear();
+
+  const tabsHtml = [{v:30,l:'30 dias'},{v:90,l:'3 meses'},{v:365,l:'12 meses'}]
+    .map(t => `<button class="periodo-tab${_periodoGastos===t.v?' ativo':''}" onclick="_setPeriodo(${t.v})">${t.l}</button>`).join('');
+
+  const totalFmt = gData.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  const catsHtml = gData.categorias.length === 0
+    ? '<p style="color:#94a3b8;text-align:center;padding:24px 0">Nenhuma compra com preço registrado neste período.</p>'
+    : gData.categorias.map(c => {
+        const pct = gData.total > 0 ? Math.round((c.total / gData.total) * 100) : 0;
+        const vf = c.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        return `<div class="gasto-cat">
+          <div class="gasto-cat-topo"><div class="gasto-cat-nm">${c.categoria}</div><div class="gasto-cat-val">${vf}</div></div>
+          <div class="gasto-cat-pct">${pct}% do total</div>
+          <div class="gasto-bar-wrap"><div class="gasto-bar" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+
+  const barsHtml = mData.meses.map(m => {
+    const h = Math.max(Math.round((m.total / maxMes) * 80), m.total > 0 ? 4 : 2);
+    const temDado = m.total > 0;
+    const classes = ['bar-col', temDado ? 'tem-dado' : '', m.mes === mesAtual && _anoGastos === anoAtual ? 'mes-atual' : ''].filter(Boolean).join(' ');
+    return `<div class="${classes}">
+      <div class="bar-fill" style="height:${h}px"></div>
+      <div class="bar-lbl">${MESES[m.mes-1]}</div>
+    </div>`;
+  }).join('');
+
+  const totalAnoFmt = mData.total_ano.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const navPrev = `<button onclick="_setAno(${_anoGastos-1})">← ${_anoGastos-1}</button>`;
+  const navNext = _anoGastos < anoAtual ? `<button onclick="_setAno(${_anoGastos+1})">${_anoGastos+1} →</button>` : '<span></span>';
+
+  document.getElementById('conteudoGastos').innerHTML = `
+    <div style="padding:16px 12px 90px">
+      <div class="periodo-tabs">${tabsHtml}</div>
+      <div class="gasto-total">${totalFmt} <span>no período</span></div>
+      ${catsHtml}
+      <div class="grafico-anual">
+        <div class="grafico-anual-nav">${navPrev}<span>📅 ${_anoGastos}</span>${navNext}</div>
+        <div class="bars-wrap">${barsHtml}</div>
+        <div class="grafico-total-ano">Total ${_anoGastos}: <b>${totalAnoFmt}</b></div>
+      </div>
+      <div class="aviso-dados">⚠ Baseado apenas em notas fiscais processadas no app. Compras sem nota não são contabilizadas.</div>
+    </div>`;
+}
+
+async function _setPeriodo(p) { _periodoGastos = p; await carregarGastos(); }
+async function _setAno(a) { _anoGastos = a; await carregarGastos(); }
 
 // ===== AJUDA =====
 function abrirAjuda() {
@@ -1059,6 +1174,7 @@ if(token){
   document.getElementById("btnDono").style.display = _isDono ? "" : "none";
   document.getElementById("btnNota").style.display = _isDono ? "" : "none";
   document.getElementById("btnProdutos").style.display = _isDono ? "" : "none";
+  document.getElementById("btnGastos").style.display = _isDono ? "" : "none";
   carregar();
   if(_isDono) carregarConfig();
 }

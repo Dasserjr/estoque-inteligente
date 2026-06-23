@@ -1,5 +1,23 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.2.0 · 23/06/2026
+
+### Fase 3 — Previsão e Análise
+
+#### 3.1 — Dias de cobertura na lista principal
+- Cada produto exibe "acaba em ~X dias" calculado pelo consumo médio dos últimos 28 dias
+- Se não houver histórico de uso, o campo não é exibido
+
+#### 3.3 — Gasto por categoria
+- Nova tela "💰 Gastos" no rodapé do menu dono
+- Seletor de período: 30 dias / 3 meses / 12 meses
+- Total gasto no período com barras proporcionais por categoria (percentual)
+- Gráfico anual de barras (Jan–Dez) com navegação entre anos; mês atual destacado
+- Aviso transparente: dados baseados apenas em notas fiscais processadas no app
+- Novas rotas: `GET /api/compras/gastos?periodo=30` e `GET /api/compras/gastos/mensal?ano=2026`
+
+---
+
 ## versão 1.1.6 · 23/06/2026
 
 ### Cadastro de produto — menu do dono

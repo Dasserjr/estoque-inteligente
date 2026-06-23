@@ -29,6 +29,54 @@ router.get('/lista', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/compras/gastos/mensal?ano=2026 — gastos mês a mês do ano (12 meses).
+router.get('/gastos/mensal', autenticar, exigirDono, async (req, res) => {
+  const ano = parseInt(req.query.ano) || new Date().getFullYear();
+  try {
+    const { rows } = await pool.query(`
+      SELECT EXTRACT(MONTH FROM comp.data)::int AS mes,
+             ROUND(SUM(ci.preco_unit * ci.qtd)::numeric, 2) AS total
+      FROM compra_itens ci
+      JOIN compras comp ON comp.id = ci.compra_id
+      WHERE ci.preco_unit IS NOT NULL
+        AND EXTRACT(YEAR FROM comp.data) = $1
+      GROUP BY EXTRACT(MONTH FROM comp.data)::int
+      ORDER BY mes
+    `, [ano]);
+    const meses = Array.from({ length: 12 }, (_, i) => {
+      const found = rows.find(r => r.mes === i + 1);
+      return { mes: i + 1, total: found ? Number(found.total) : 0 };
+    });
+    res.json({ ano, meses, total_ano: +meses.reduce((s, m) => s + m.total, 0).toFixed(2) });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// GET /api/compras/gastos?periodo=30 — gastos por categoria no período.
+router.get('/gastos', autenticar, exigirDono, async (req, res) => {
+  const periodo = parseInt(req.query.periodo) || 30;
+  if (![30, 90, 365].includes(periodo))
+    return res.status(400).json({ erro: 'periodo deve ser 30, 90 ou 365' });
+  try {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(c.categoria, 'Sem categoria') AS categoria,
+             ROUND(SUM(ci.preco_unit * ci.qtd)::numeric, 2) AS total
+      FROM compra_itens ci
+      JOIN compras comp ON comp.id = ci.compra_id
+      JOIN catalogo c ON c.id = ci.catalogo_id
+      WHERE comp.data >= now() - ($1 || ' days')::interval
+        AND ci.preco_unit IS NOT NULL
+      GROUP BY COALESCE(c.categoria, 'Sem categoria')
+      ORDER BY total DESC
+    `, [periodo]);
+    const total = rows.reduce((s, r) => s + Number(r.total), 0);
+    res.json({
+      periodo,
+      total: +total.toFixed(2),
+      categorias: rows.map(r => ({ categoria: r.categoria, total: Number(r.total) }))
+    });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // GET /api/compras/historico/:id — histórico de compras de um produto.
 router.get('/historico/:id', autenticar, exigirDono, async (req, res) => {
   const id = Number(req.params.id);
