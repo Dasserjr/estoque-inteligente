@@ -1,5 +1,13 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.1.6 · 23/06/2026
+
+### Cadastro de produto — menu do dono
+- Removido formulário de cadastro antigo sem validação do "Modo dono"
+- Botão "＋ Adicionar produto" agora abre o modal completo de cadastro (com medidas, preview de nome, verificação de duplicata)
+
+---
+
 ## versão 1.1.4 · 23/06/2026
 
 ### Cadastro de produtos — duplicata e medidas

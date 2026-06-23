@@ -281,11 +281,7 @@
       <input id="cfgEmail" type="email" placeholder="voce@email.com">
     </div>
     <div id="linhasDono"></div>
-    <div class="addRow">
-      <input id="novoNome" placeholder="Novo produto">
-      <input id="novoQtd" type="number" min="0" value="1" style="max-width:70px">
-    </div>
-    <button class="secundario" onclick="addProduto()">＋ Adicionar produto</button>
+    <button class="secundario" onclick="irParaNovoProduto()">＋ Adicionar produto</button>
     <button class="fechar" onclick="fecharDono()">Salvar e fechar</button>
     <p class="small">Marcações feitas offline são enviadas quando a conexão volta.</p>
   </div>
@@ -561,13 +557,9 @@ async function fecharDono(){
   carregar();
 }
 
-async function addProduto(){
-  const nome=document.getElementById("novoNome").value.trim();
-  const qtd=+document.getElementById("novoQtd").value||0;
-  if(!nome) return;
-  await api("/itens",{method:"POST",body:JSON.stringify({nome_canonico:nome, estoque_inicial:qtd})}).catch(()=>{});
-  document.getElementById("novoNome").value=""; document.getElementById("novoQtd").value="1";
-  await carregar(); abrirDono();
+function irParaNovoProduto() {
+  fecharDono();
+  abrirNovoProduto();
 }
 
 // ===== AJUDA =====
