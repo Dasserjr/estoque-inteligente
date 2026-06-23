@@ -147,7 +147,7 @@
   .grafico-anual-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
   .grafico-anual-nav span{font-size:14px;font-weight:700;color:#334155;}
   .grafico-anual-nav button{background:none;border:1.5px solid #e2e8f0;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;color:#64748b;}
-  .bars-wrap{display:flex;align-items:flex-end;gap:3px;height:90px;}
+  .bars-wrap{display:flex;align-items:flex-end;gap:3px;height:110px;}
   .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
   .bar-fill{width:100%;border-radius:3px 3px 0 0;background:#bfdbfe;min-height:2px;}
   .bar-col.tem-dado .bar-fill{background:var(--azul);}
@@ -533,11 +533,12 @@ function render(){
     .sort((a,b)=>ordem[a.situacao]-ordem[b.situacao]||a.nome_canonico.localeCompare(b.nome_canonico))
     .forEach(i=>{
       const txt=i.situacao==="comprar"?"Comprar":(i.situacao==="atencao"?"Atenção":"Ok");
-      const dias=i.dias_cobertura?` · acaba em ~${i.dias_cobertura} dias`:"";
+      const diasTxt=i.dias_cobertura?`acaba em ~${i.dias_cobertura} dias`:'';
+      const uso=[i.categoria,diasTxt].filter(Boolean).join(' · ');
       const card=document.createElement("div"); card.className="card "+i.situacao;
       card.innerHTML=`<div class="icone">${i.icone||"🧴"}</div>
         <div class="info"><div class="nome">${i.nome_canonico}</div>
-        <div class="uso">${i.categoria||""}${dias}</div>
+        <div class="uso">${uso}</div>
         <span class="bola">${txt}</span></div>
         <div class="controles">
           <button class="btn btnMenos" onclick="mov(${i.id},-1)">–</button>
@@ -614,12 +615,12 @@ async function carregarGastos() {
   el.innerHTML = '<div class="carregando"><div class="spinner"></div><br>Carregando...</div>';
   try {
     const [gData, mData] = await Promise.all([
-      api(`/compras/gastos?periodo=${_periodoGastos}`),
-      api(`/compras/gastos/mensal?ano=${_anoGastos}`)
+      api(`/compras/gastos?periodo=${_periodoGastos}`).then(r => r.json()),
+      api(`/compras/gastos/mensal?ano=${_anoGastos}`).then(r => r.json())
     ]);
     renderGastos(gData, mData);
   } catch(e) {
-    el.innerHTML = `<div class="carregando">Erro ao carregar dados.</div>`;
+    if (!e.auth) el.innerHTML = `<div class="carregando" style="color:#dc2626">Erro: ${e.message}</div>`;
   }
 }
 
@@ -661,7 +662,7 @@ function renderGastos(gData, mData) {
   const navNext = _anoGastos < anoAtual ? `<button onclick="_setAno(${_anoGastos+1})">${_anoGastos+1} →</button>` : '<span></span>';
 
   document.getElementById('conteudoGastos').innerHTML = `
-    <div style="padding:16px 12px 90px">
+    <div style="padding-top:16px">
       <div class="periodo-tabs">${tabsHtml}</div>
       <div class="gasto-total">${totalFmt} <span>no período</span></div>
       ${catsHtml}

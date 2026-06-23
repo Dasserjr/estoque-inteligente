@@ -63,7 +63,7 @@ router.get('/gastos', autenticar, exigirDono, async (req, res) => {
       FROM compra_itens ci
       JOIN compras comp ON comp.id = ci.compra_id
       JOIN catalogo c ON c.id = ci.catalogo_id
-      WHERE comp.data >= now() - ($1 || ' days')::interval
+      WHERE comp.data >= now() - (INTERVAL '1 day' * $1)
         AND ci.preco_unit IS NOT NULL
       GROUP BY COALESCE(c.categoria, 'Sem categoria')
       ORDER BY total DESC
