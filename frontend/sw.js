@@ -1,6 +1,6 @@
 // Service worker simples: cache do "casco" (app shell) para abrir offline.
 // Chamadas /api NUNCA são cacheadas (sempre rede); a fila offline fica no app (outbox).
-const CACHE = "estoque-shell-v1";
+const CACHE = "estoque-shell-v2";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -12,6 +12,23 @@ self.addEventListener("activate", (e) => {
     caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("push", (e) => {
+  const data = e.data ? e.data.json() : {};
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Estoque de Casa', {
+      body: data.body || '',
+      icon: data.icon || '/icon.svg',
+      badge: '/icon.svg',
+      data: { url: data.url || '/' }
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(clients.openWindow(e.notification.data.url || '/'));
 });
 
 self.addEventListener("fetch", (e) => {

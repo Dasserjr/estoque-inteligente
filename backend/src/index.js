@@ -15,7 +15,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api', require('./routes/auth'));          // POST /api/login
 app.use('/api/itens', require('./routes/itens'));
 app.use('/api/compras', require('./routes/compras'));
+app.use('/api/push', require('./routes/push'));
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
+require('./services/scheduler').iniciarAgendador();
 
 // Frontend estático (PWA) — servido pelo mesmo servidor, como no panorama.
 const FRONT = path.resolve(__dirname, '../../frontend');
