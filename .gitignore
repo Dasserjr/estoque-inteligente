@@ -1,6 +1,6 @@
 node_modules/
-.wrangler/
-.dev.vars
-dist/
+backend/node_modules/
+.env
+backend/.env
 *.log
 .DS_Store
