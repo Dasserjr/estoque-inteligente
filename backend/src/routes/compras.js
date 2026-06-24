@@ -39,6 +39,7 @@ router.get('/gastos/mensal', autenticar, exigirDono, async (req, res) => {
       FROM compra_itens ci
       JOIN compras comp ON comp.id = ci.compra_id
       WHERE ci.preco_unit IS NOT NULL
+        AND ci.catalogo_id IS NOT NULL
         AND EXTRACT(YEAR FROM comp.data) = $1
       GROUP BY EXTRACT(MONTH FROM comp.data)::int
       ORDER BY mes
