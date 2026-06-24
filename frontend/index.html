@@ -53,10 +53,20 @@
   .btn:active{transform:scale(.92);}
   .btnMenos{background:var(--vermelho);}.btnMais{background:var(--verde);}
   .rodape{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid #e2e8f0;
-    display:flex;justify-content:space-around;padding:8px 6px;z-index:10;}
+    display:flex;justify-content:space-around;padding:8px 6px;z-index:10;
+    overflow-x:auto;scrollbar-width:none;}
+  .rodape::-webkit-scrollbar{display:none;}
   .rodape button{background:none;border:none;font-size:13px;color:#475569;display:flex;flex-direction:column;
-    align-items:center;gap:2px;cursor:pointer;padding:4px 10px;}
+    align-items:center;gap:2px;cursor:pointer;padding:4px 8px;flex-shrink:0;min-width:52px;}
   .rodape button span{font-size:22px;}
+  /* Relatórios */
+  .rel-card{display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1.5px solid #e2e8f0;}
+  .rel-info{flex:1;}
+  .rel-titulo{font-size:15px;font-weight:700;}
+  .rel-desc{font-size:12px;color:#64748b;margin-top:2px;}
+  .btn-rel{padding:10px 14px;border:none;border-radius:10px;background:var(--azul);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none;min-width:72px;text-align:center;}
+  .btn-rel:disabled{background:#cbd5e1;cursor:not-allowed;}
+  .rel-aviso{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.5;}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:20;align-items:flex-end;}
   .modal.show{display:flex;}
   .folha{background:#fff;width:100%;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px 30px;}
@@ -206,6 +216,7 @@
   <button id="btnNota" onclick="abrirNota()" style="display:none"><span>📷</span>Nota fiscal</button>
   <button id="btnProdutos" onclick="abrirMeusProdutos()" style="display:none"><span>📦</span>Produtos</button>
   <button id="btnGastos" onclick="abrirGastos()" style="display:none"><span>💰</span>Gastos</button>
+  <button id="btnRelatorios" onclick="abrirRelatorios()" style="display:none"><span>📊</span>Relatórios</button>
   <button onclick="carregar()"><span>🔄</span>Atualizar</button>
   <button onclick="abrirAjuda()"><span>❓</span>Ajuda</button>
   <button onclick="sair()"><span>🚪</span>Sair</button>
@@ -331,6 +342,55 @@
     <h2>💰 Gastos</h2>
   </div>
   <div class="mf-corpo" id="conteudoGastos"></div>
+</div>
+
+<!-- ===== RELATÓRIOS E EXPORTAÇÃO (tela cheia) ===== -->
+<div class="modal-full" id="modalRelatorios">
+  <div class="mf-header">
+    <button onclick="document.getElementById('modalRelatorios').classList.remove('show')">←</button>
+    <h2>📊 Relatórios</h2>
+  </div>
+  <div class="mf-corpo" style="padding-top:16px">
+
+    <div class="secao-titulo">📥 Excel</div>
+    <div class="rel-aviso" style="background:#eff6ff;color:#1e40af">Último ano (365 dias). Formato .xlsx — compatível com Excel, Google Planilhas e LibreOffice.</div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">📦 Estoque atual</div><div class="rel-desc">Todos os produtos com situação, estoque, mínimo e ideal</div></div>
+      <button class="btn-rel" onclick="exportarXlsEstoque(this)">↓ xlsx</button>
+    </div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">📋 Movimentações</div><div class="rel-desc">Uso, compras e ajustes — últimos 12 meses</div></div>
+      <button class="btn-rel" onclick="exportarXlsMov(this)">↓ xlsx</button>
+    </div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">🛒 Histórico de compras</div><div class="rel-desc">Datas, mercados, quantidades e preços — últimos 12 meses</div></div>
+      <button class="btn-rel" onclick="exportarXlsCompras(this)">↓ xlsx</button>
+    </div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">💰 Gasto mensal</div><div class="rel-desc">Resumo por categoria mês a mês — ano atual</div></div>
+      <button class="btn-rel" onclick="exportarXlsGastos(this)">↓ xlsx</button>
+    </div>
+    <div class="rel-card" style="border-color:var(--azul)">
+      <div class="rel-info"><div class="rel-titulo">📚 Relatório completo</div><div class="rel-desc">Todas as 4 abas em um único arquivo Excel</div></div>
+      <button class="btn-rel" onclick="exportarXlsTudo(this)">↓ xlsx</button>
+    </div>
+
+    <div class="secao-titulo" style="margin-top:8px">📄 PDF</div>
+    <div class="rel-aviso" style="background:#f0fdf4;color:#166534">Dois estilos de estoque para comparar: <b>Opção A</b> captura a tela como ela aparece; <b>Opção B</b> gera documento formal com tabela.</div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">🗂 Estoque — Opção A</div><div class="rel-desc">Captura da tela atual (com cores e ícones)</div></div>
+      <button class="btn-rel" onclick="exportarPdfTela(this)">↓ pdf</button>
+    </div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">🗂 Estoque — Opção B</div><div class="rel-desc">Tabela formal com data de emissão e situação colorida</div></div>
+      <button class="btn-rel" onclick="exportarPdfFormal(this)">↓ pdf</button>
+    </div>
+    <div class="rel-card">
+      <div class="rel-info"><div class="rel-titulo">📊 Gráfico anual de gastos</div><div class="rel-desc">Barras Jan–Dez do ano atual com resumo por categoria</div></div>
+      <button class="btn-rel" onclick="exportarPdfGrafico(this)">↓ pdf</button>
+    </div>
+
+  </div>
 </div>
 
 <!-- ===== EDITAR PRODUTO ===== -->
@@ -462,6 +522,7 @@ async function entrar(){
     document.getElementById("btnNota").style.display = isDono ? "" : "none";
     document.getElementById("btnProdutos").style.display = isDono ? "" : "none";
     document.getElementById("btnGastos").style.display = isDono ? "" : "none";
+    document.getElementById("btnRelatorios").style.display = isDono ? "" : "none";
     carregar();
     if(isDono) carregarConfig();
     subscribeNotificacoes();
@@ -677,6 +738,294 @@ function renderGastos(gData, mData) {
 
 async function _setPeriodo(p) { _periodoGastos = p; await carregarGastos(); }
 async function _setAno(a) { _anoGastos = a; await carregarGastos(); }
+
+// ===== RELATÓRIOS E EXPORTAÇÃO =====
+const _CDN_XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const _CDN_JSPDF = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+const _CDN_AUTOTABLE = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+const _CDN_H2C = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+const _scriptCache = {};
+function _loadScript(src) {
+  if (!_scriptCache[src]) {
+    _scriptCache[src] = new Promise((res, rej) => {
+      if (document.querySelector(`script[src="${src}"]`)) return res();
+      const s = document.createElement('script'); s.src = src;
+      s.onload = res;
+      s.onerror = () => rej(new Error('Falha ao carregar biblioteca. Verifique sua conexão.'));
+      document.head.appendChild(s);
+    });
+  }
+  return _scriptCache[src];
+}
+async function _libs_xlsx() { await _loadScript(_CDN_XLSX); }
+async function _libs_pdf() { await _loadScript(_CDN_JSPDF); await _loadScript(_CDN_AUTOTABLE); }
+async function _libs_h2c() { await _loadScript(_CDN_H2C); }
+
+function _nomeArq(pref, ext) {
+  return `${pref}-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.${ext}`;
+}
+function _relBtnStart(btn) { btn.disabled = true; btn._orig = btn.textContent; btn.textContent = '...'; }
+function _relBtnEnd(btn) { btn.disabled = false; btn.textContent = btn._orig || '↓'; }
+
+function abrirRelatorios() {
+  document.getElementById('modalRelatorios').classList.add('show');
+}
+
+// ---- Excel ----
+async function exportarXlsEstoque(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_xlsx();
+    const dados = await api('/itens').then(r => r.json());
+    const ws = XLSX.utils.json_to_sheet(dados.map(i => ({
+      'Produto': i.nome_canonico, 'Categoria': i.categoria||'', 'Icone': i.icone||'',
+      'Estoque': i.estoque,
+      'Situacao': i.situacao==='comprar'?'Comprar':i.situacao==='atencao'?'Atencao':'Ok',
+      'Minimo': i.min_nivel, 'Ideal': i.par_level,
+      'Acaba em (dias)': i.dias_cobertura||'', 'Setor': i.setor||''
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
+    XLSX.writeFile(wb, _nomeArq('estoque', 'xlsx'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+async function exportarXlsMov(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_xlsx();
+    const dados = await api('/exportar/movimentacoes?periodo=365').then(r => r.json());
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), 'Movimentacoes');
+    XLSX.writeFile(wb, _nomeArq('movimentacoes', 'xlsx'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+async function exportarXlsCompras(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_xlsx();
+    const dados = await api('/exportar/compras?periodo=365').then(r => r.json());
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), 'Compras');
+    XLSX.writeFile(wb, _nomeArq('compras', 'xlsx'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+async function exportarXlsGastos(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_xlsx();
+    const ano = new Date().getFullYear();
+    const md = await api(`/compras/gastos/mensal?ano=${ano}`).then(r => r.json());
+    const MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const ws = XLSX.utils.json_to_sheet(md.meses.map(m => ({'Mes': MESES[m.mes-1], [`Gasto ${ano} (R$)`]: m.total})));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `Gastos ${ano}`);
+    XLSX.writeFile(wb, _nomeArq(`gastos-${ano}`, 'xlsx'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+async function exportarXlsTudo(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_xlsx();
+    const ano = new Date().getFullYear();
+    const MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const [estoque, movs, compras, mData] = await Promise.all([
+      api('/itens').then(r => r.json()),
+      api('/exportar/movimentacoes?periodo=365').then(r => r.json()),
+      api('/exportar/compras?periodo=365').then(r => r.json()),
+      api(`/compras/gastos/mensal?ano=${ano}`).then(r => r.json())
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(estoque.map(i => ({
+      'Produto': i.nome_canonico, 'Categoria': i.categoria||'', 'Estoque': i.estoque,
+      'Situacao': i.situacao==='comprar'?'Comprar':i.situacao==='atencao'?'Atencao':'Ok',
+      'Minimo': i.min_nivel, 'Ideal': i.par_level, 'Acaba em (dias)': i.dias_cobertura||''
+    }))), 'Estoque');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(movs), 'Movimentacoes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compras), 'Compras');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mData.meses.map(m => ({'Mes': MESES[m.mes-1], [`Gasto ${ano} (R$)`]: m.total}))), `Gastos ${ano}`);
+    XLSX.writeFile(wb, _nomeArq('relatorio-completo', 'xlsx'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+// ---- PDF Opção A: captura da tela ----
+async function exportarPdfTela(btn) {
+  _relBtnStart(btn);
+  try {
+    await Promise.all([_libs_h2c(), _libs_pdf()]);
+    const lista = document.getElementById('lista');
+    const canvas = await html2canvas(lista, { scale: 2, useCORS: true, logging: false, backgroundColor: '#f8fafc' });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    const m = 10;
+    const imgW = pw - m * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+
+    // cabeçalho
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, pw, 16, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.text('Estoque de Casa — Situacao atual', m, 10.5);
+    doc.setFontSize(8);
+    doc.text(new Date().toLocaleString('pt-BR'), pw - m, 10.5, { align: 'right' });
+
+    let posY = 20;
+    let restante = imgH;
+    const espaco = ph - posY - m;
+    doc.addImage(imgData, 'PNG', m, posY, imgW, imgH);
+    restante -= espaco;
+    while (restante > 0) {
+      doc.addPage();
+      doc.addImage(imgData, 'PNG', m, m - (imgH - restante), imgW, imgH);
+      restante -= (ph - m * 2);
+    }
+    doc.save(_nomeArq('estoque-opcaoA', 'pdf'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+// ---- PDF Opção B: tabela formal ----
+async function exportarPdfFormal(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_pdf();
+    const dados = await api('/itens').then(r => r.json());
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = doc.internal.pageSize.getWidth();
+
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, pw, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.text('Estoque de Casa', 14, 10);
+    doc.setFontSize(8.5);
+    doc.text('Relatorio de Situacao do Estoque', 14, 15.5);
+    doc.text(new Date().toLocaleString('pt-BR'), pw - 14, 10, { align: 'right' });
+    doc.text(`${dados.length} produtos`, pw - 14, 15.5, { align: 'right' });
+
+    const corSit = { comprar: [220,38,38], atencao: [217,119,6], ok: [22,163,74] };
+    doc.autoTable({
+      startY: 22,
+      head: [['Produto','Categoria','Estoque','Situacao','Min','Ideal','Acaba em']],
+      body: dados.map(i => [
+        i.nome_canonico, i.categoria||'—', i.estoque,
+        i.situacao==='comprar'?'Comprar':i.situacao==='atencao'?'Atencao':'Ok',
+        i.min_nivel, i.par_level,
+        i.dias_cobertura ? `~${i.dias_cobertura}d` : '—'
+      ]),
+      headStyles: { fillColor: [14,165,233], fontSize: 8.5, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248,250,252] },
+      columnStyles: {
+        0:{cellWidth:52}, 1:{cellWidth:28}, 2:{cellWidth:16,halign:'center'},
+        3:{cellWidth:20,halign:'center'}, 4:{cellWidth:12,halign:'center'},
+        5:{cellWidth:12,halign:'center'}, 6:{cellWidth:22,halign:'center'}
+      },
+      didParseCell: (d) => {
+        if (d.section==='body' && d.column.index===3) {
+          const sit = dados[d.row.index]?.situacao;
+          if (sit && corSit[sit]) { d.cell.styles.textColor = corSit[sit]; d.cell.styles.fontStyle='bold'; }
+        }
+      }
+    });
+    const np = doc.internal.getNumberOfPages();
+    for (let i=1;i<=np;i++) {
+      doc.setPage(i); doc.setFontSize(7.5); doc.setTextColor(148,163,184);
+      doc.text(`Pagina ${i} de ${np}`, pw/2, doc.internal.pageSize.getHeight()-5, {align:'center'});
+    }
+    doc.save(_nomeArq('estoque-opcaoB', 'pdf'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
+
+// ---- PDF gráfico anual ----
+async function exportarPdfGrafico(btn) {
+  _relBtnStart(btn);
+  try {
+    await _libs_pdf();
+    const ano = new Date().getFullYear();
+    const [mData, gData] = await Promise.all([
+      api(`/compras/gastos/mensal?ano=${ano}`).then(r => r.json()),
+      api(`/compras/gastos?periodo=365`).then(r => r.json())
+    ]);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = doc.internal.pageSize.getWidth();
+    const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const mesAtual = new Date().getMonth() + 1;
+
+    // cabeçalho
+    doc.setFillColor(14,165,233);
+    doc.rect(0,0,pw,18,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(13);
+    doc.text('Estoque de Casa', 14, 10);
+    doc.setFontSize(8.5);
+    doc.text(`Relatorio de Gastos — ${ano}`, 14, 15.5);
+    doc.text(new Date().toLocaleString('pt-BR'), pw-14, 13, {align:'right'});
+
+    doc.setTextColor(15,23,42);
+    doc.setFontSize(10);
+    const totalFmt = 'R$ ' + mData.total_ano.toLocaleString('pt-BR',{minimumFractionDigits:2});
+    doc.text(`Total ${ano}: ${totalFmt}`, 14, 26);
+
+    // gráfico de barras
+    const cx=14, cy=32, cw=pw-28, ch=55;
+    const maxV = Math.max(...mData.meses.map(m=>m.total), 0.01);
+    const bw = (cw/12) - 1.5;
+
+    mData.meses.forEach((m,i) => {
+      const x = cx + i*(cw/12);
+      const barH = m.total > 0 ? Math.max((m.total/maxV)*(ch-8), 3) : 2;
+      const barY = cy + ch - barH - 5;
+      if (m.mes===mesAtual) doc.setFillColor(99,102,241);
+      else if (m.total>0) doc.setFillColor(14,165,233);
+      else doc.setFillColor(191,219,254);
+      doc.rect(x+0.5, barY, bw, barH, 'F');
+      doc.setFontSize(6.5); doc.setTextColor(148,163,184);
+      doc.text(MESES[i], x+bw/2+0.5, cy+ch-1, {align:'center'});
+      if (m.total>0) {
+        doc.setFontSize(5.5); doc.setTextColor(15,23,42);
+        doc.text('R$'+Math.round(m.total).toLocaleString('pt-BR'), x+bw/2+0.5, barY-1, {align:'center'});
+      }
+    });
+    doc.setDrawColor(226,232,240);
+    doc.line(cx, cy+ch-5, cx+cw, cy+ch-5);
+
+    // legenda do mês atual
+    doc.setFontSize(7); doc.setTextColor(99,102,241);
+    doc.text(`* mes atual destacado em roxo`, cx, cy+ch+2);
+
+    // tabela por categoria
+    if (gData.categorias.length > 0) {
+      doc.setTextColor(15,23,42); doc.setFontSize(9.5);
+      doc.text('Por categoria (ultimos 12 meses):', 14, cy+ch+10);
+      doc.autoTable({
+        startY: cy+ch+14,
+        head: [['Categoria','Total (R$)','%']],
+        body: gData.categorias.map(c => [
+          c.categoria,
+          c.total.toLocaleString('pt-BR',{minimumFractionDigits:2}),
+          gData.total>0 ? Math.round((c.total/gData.total)*100)+'%' : '0%'
+        ]),
+        headStyles: {fillColor:[14,165,233], fontSize:8.5},
+        bodyStyles: {fontSize:8},
+        alternateRowStyles: {fillColor:[248,250,252]},
+        columnStyles: {1:{halign:'right'}, 2:{halign:'center', cellWidth:20}}
+      });
+    } else {
+      doc.setFontSize(9); doc.setTextColor(148,163,184);
+      doc.text('Nenhuma compra com preco registrado no periodo.', 14, cy+ch+18);
+    }
+    doc.save(_nomeArq(`gastos-${ano}`, 'pdf'));
+  } catch(e) { alert('Erro: ' + e.message); } finally { _relBtnEnd(btn); }
+}
 
 // ===== AJUDA =====
 function abrirAjuda() {
@@ -1176,6 +1525,7 @@ if(token){
   document.getElementById("btnNota").style.display = _isDono ? "" : "none";
   document.getElementById("btnProdutos").style.display = _isDono ? "" : "none";
   document.getElementById("btnGastos").style.display = _isDono ? "" : "none";
+  document.getElementById("btnRelatorios").style.display = _isDono ? "" : "none";
   carregar();
   if(_isDono) carregarConfig();
 }

@@ -1,5 +1,29 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.3.0 · 23/06/2026
+
+### Relatórios e Exportação (nova tela 📊)
+
+#### Excel (.xlsx)
+- **Estoque atual** — todos os produtos com situação, estoque, mínimo, ideal e dias de cobertura
+- **Movimentações** — uso, compras e ajustes dos últimos 12 meses (6 colunas: data, produto, categoria, tipo, quantidade, registrado por)
+- **Histórico de compras** — datas, mercados, quantidades e preços dos últimos 12 meses
+- **Gasto mensal** — resumo por categoria mês a mês do ano atual
+- **Relatório completo** — todas as 4 abas em um único arquivo Excel
+- Bibliotecas carregadas sob demanda (SheetJS via CDN, não afeta carregamento inicial do app)
+
+#### PDF
+- **Opção A — como aparece na tela**: captura html2canvas da lista de produtos com cores e ícones, cabeçalho azul, multi-página automático
+- **Opção B — tabela formal**: jsPDF + autoTable com tabela estruturada, situação colorida (verde/amarelo/vermelho), número de páginas no rodapé
+- **Gráfico anual**: barras Jan–Dez desenhadas programaticamente em jsPDF, mês atual destacado em roxo, tabela por categoria abaixo
+
+#### Infraestrutura
+- Novas rotas: `GET /api/exportar/movimentacoes?periodo=365` e `GET /api/exportar/compras?periodo=365`
+- Novo botão 📊 Relatórios no rodapé (somente dono)
+- Rodapé agora é horizontalmente rolável em telas pequenas com muitos botões
+
+---
+
 ## versão 1.2.0 · 23/06/2026
 
 ### Fase 3 — Previsão e Análise
