@@ -697,7 +697,7 @@ function abrirDono(){
   document.getElementById("modalDono").classList.add("show");
 }
 
-async function fecharDono(){
+async function fecharDono({ refresh = true } = {}){
   cfg.fone=document.getElementById("cfgFone").value.trim();
   cfg.email=document.getElementById("cfgEmail").value.trim(); salvarCfg();
   for(const i of itens){
@@ -712,11 +712,11 @@ async function fecharDono(){
     }
   }
   document.getElementById("modalDono").classList.remove("show");
-  carregar();
+  if (refresh) carregar();
 }
 
-function irParaNovoProduto() {
-  fecharDono();
+async function irParaNovoProduto() {
+  await fecharDono({ refresh: false });
   abrirNovoProduto();
 }
 
