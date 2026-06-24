@@ -12,62 +12,111 @@ Estoque = SOMA dos eventos (`SELECT SUM(qtd) FROM eventos`). Todo movimento é u
 imutável (uso negativo, compra positivo, ajuste). NUNCA trocar por um campo "quantidade"
 mutável no catálogo — é isso que destrava previsão, tendência e gasto.
 
-## Stack (igual à do panorama-patrimonio, de propósito)
+## Premissas do modelo
+- **Tudo unitário**: menor fração de uso. Comprou um fardo de 12 panos → entra como 12 unidades.
+- **Nome canônico inclui medida**: "Sabão Barra 90g", não só "Sabão Barra". Facilita compra.
+- **Mínimo jamais zero**: `min_nivel` padrão = 1. "Nunca deixar acabar" é pilar do sistema.
+- **Padrão ao cadastrar**: mínimo 1, ideal 2. Ajustável depois em Meus Produtos.
+
+## Stack
 - **Express** + **PostgreSQL** (driver `pg`, SQL puro) — `backend/`.
 - **JWT** (auth mínimo: 1 senha por papel; ver middleware/auth.js).
 - **PWA** estático em `frontend/` (HTML/CSS/JS puro, sem build), servido pelo Express.
-- Convenções espelham o panorama: rotas `require('express').Router()`, `pool.query(sql,$1)`,
+- Convenções: rotas `require('express').Router()`, `pool.query(sql,$1)`,
   respostas de erro `{ erro }`, middleware `autenticar`/`exigirDono`.
 
 ## Modelo de dados (backend/src/db/schema.sql)
-`catalogo` (par_level=ideal, min_nivel=reposição, setor=escopo opcional) · `apelidos`
-(texto_na_nota, gtin → resolve variações) · `eventos` (ledger) · `compras` + `compra_itens`
-(histórico de preço) · view `v_estoque`.
+- `catalogo` — par_level=ideal, min_nivel=reposição, setor, lead_time_dias (default 7)
+- `apelidos` — texto_na_nota, gtin → resolve variações de nome na nota fiscal
+- `eventos` — ledger imutável de todo movimento
+- `compras` + `compra_itens` — histórico de compras com preço unitário
+- `config` — chave/valor para configurações persistentes (ex: ia_ativa)
+- `push_subscriptions` — criada em runtime por `ensureTable()` em push.js
+- view `v_estoque` — estoque atual por produto (SUM de eventos)
 
-## API (Fases 1 e 2 implementadas)
-- `POST /api/login {senha}` → { token, perfil } (perfil = dono | empregada).
-- `GET /api/itens` (situação ok|atencao|comprar, consumo 28d, dias de cobertura).
-- `POST /api/itens/:id/mov {delta}` (registra evento). `POST/PUT /api/itens` (exigirDono).
-- `GET /api/compras/lista` (no ponto de reposição, qtd sugerida + custo estimado).
-- `POST /api/compras/nota` e `/confirmar` (processam nota: casa itens, registra pendentes).
-- `POST /api/compras/foto {imagem, mime}` (exigirDono) — envia foto em base64, retorna itens extraídos pela IA.
-- `GET /api/versao` — retorna versão do package.json para exibição no frontend.
-- `GET /api/push/vapid-key` — chave pública VAPID para o frontend.
-- `POST /api/push/subscribe` (autenticar) — registra subscription de push notification.
-- `POST /api/push/testar` (autenticar) — dispara notificação de teste imediata.
-Regra de situação (manter igual no front e back): estoque<=min → comprar; <=min+1 → atencao.
+## API completa
+
+### Auth
+- `POST /api/login {senha}` → `{ token, perfil }` (perfil = dono | empregada)
+- `GET /api/versao` → versão do package.json
+
+### Itens / Estoque
+- `GET /api/itens` — lista com situação (ok|atencao|comprar), consumo 28d, dias_cobertura
+- `GET /api/itens/todos` (exigirDono) — todos os produtos ativos e inativos, com total_compras e ultima_compra
+- `POST /api/itens` (exigirDono) — cria produto; bloqueia nome duplicado (case-insensitive, retorna 409)
+- `PUT /api/itens/:id` (exigirDono) — atualiza campos do catálogo (incluindo ativo)
+- `DELETE /api/itens/:id` (exigirDono) — exclui produto sem histórico; retorna 409 se tiver eventos ou compras
+- `POST /api/itens/:id/mov {delta, quem}` — registra evento (coração do app)
+
+Regra de situação (manter igual no front e back): `estoque <= min_nivel` → comprar; `<= min_nivel+1` → atencao.
+
+### Compras
+- `GET /api/compras/lista` — itens no ponto de reposição com qtd sugerida e custo estimado
+- `GET /api/compras/historico/:id` (exigirDono) — histórico de compras de um produto
+- `GET /api/compras/gastos?periodo=30` (exigirDono) — gasto total por categoria no período (30|90|365 dias)
+- `GET /api/compras/gastos/mensal?ano=2026` (exigirDono) — gasto mês a mês do ano (12 meses, zeros incluídos)
+- `POST /api/compras/foto {imagem, mime}` (exigirDono) — envia foto base64, retorna itens extraídos pela IA
+- `POST /api/compras/nota` (exigirDono) — processa itens extraídos, casa com catálogo, registra pendentes
+- `POST /api/compras/confirmar` (exigirDono) — confirma item pendente, aprende apelido, dá entrada no estoque
+
+### Exportação
+- `GET /api/exportar/movimentacoes?periodo=365` (exigirDono) — ledger completo (Data, Produto, Categoria, Tipo, Quantidade, Registrado por)
+- `GET /api/exportar/compras?periodo=365` (exigirDono) — histórico de compras (Data, Mercado, Produto, Categoria, Descrição nota, Quantidade, Preço unitário, Total)
+
+### Configuração
+- `GET /api/config` (autenticar) → `{ ia_ativa: boolean }`
+- `POST /api/config/ia` (exigirDono) → `{ ativo: boolean }` — liga/desliga leitura de nota por IA
+
+### Push notifications
+- `GET /api/push/vapid-key` — chave pública VAPID para o frontend
+- `POST /api/push/subscribe` (autenticar) — registra subscription
+- `POST /api/push/testar` (autenticar) — dispara notificação de teste
 
 ## Variáveis de ambiente obrigatórias
 Ver `backend/.env` (local) e painel Railway (produção):
 - `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `SENHA_DONO`, `SENHA_EMPREGADA`, `PORT`, `NODE_ENV`
-- `ANTHROPIC_API_KEY` — chave da API Claude para leitura de fotos.
-- `AI_PROVIDER` — provedor de IA (valor: `claude`; extensível).
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` — para push notifications.
-- `RESEND_API_KEY` — para e-mail semanal via Resend.
-- `EMAIL_DONO` — endereço do dono para receber o resumo semanal.
-- `FRONTEND_URL` — URL pública do app (usado nas notificações push para redirecionar ao clicar).
-
-## Tabelas adicionais (criadas em runtime)
-`push_subscriptions` — criada automaticamente ao iniciar o servidor (`ensureTable()` em push.js).
-Campos: endpoint, p256dh, auth, criado_em.
+- `ANTHROPIC_API_KEY` — chave da API Claude para leitura de fotos (Claude Haiku)
+- `AI_PROVIDER` — provedor de IA (`claude`; extensível)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` — push notifications
+- `RESEND_API_KEY` — e-mail semanal via Resend
+- `EMAIL_DONO` — endereço do dono para resumo semanal
+- `FRONTEND_URL` — URL pública do app (usado no redirect ao clicar na notificação push)
 
 ## modulo-compras/ — núcleo portável
 `notas.js` é AGNÓSTICO: recebe `db` (interface pg), não importa Express nem conhece rotas.
-Funções: normalizar, casarItem (gtin>apelido>fuzzy tolerante a abreviações), processarNota,
-confirmarItem, itensDaFoto (implementado — delega a `src/ai/foto.js`). Não acoplar a Express.
-`src/ai/foto.js` — chama Claude Haiku com a imagem em base64, extrai JSON de itens.
+Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abreviações),
+`processarNota`, `confirmarItem`, `itensDaFoto` (delega a `src/ai/foto.js`).
+`src/ai/foto.js` — chama Claude Haiku com imagem base64, extrai JSON de itens.
 
 ## Automações (backend/src/services/)
-- `scheduler.js` — cron jobs: sexta 12h BRT → push para Delzita; sexta 18h BRT → e-mail para o dono.
-- `push.js` — gerencia subscriptions, envia push para todos os dispositivos registrados.
-- `email.js` — monta e envia e-mail HTML com consumo semanal e situação do estoque via Resend.
+- `scheduler.js` — cron jobs: sexta 12h BRT → push para Delzita; sexta 18h BRT → e-mail para o dono
+- `push.js` — gerencia subscriptions, envia push para todos os dispositivos registrados
+- `email.js` — monta e envia e-mail HTML com consumo semanal e situação do estoque via Resend
 
-## Roadmap
-- Fase 2 ✅ CONCLUÍDA: foto por IA (Claude Haiku), confirmação em 3 passos, apelidos aprendidos.
-  Pendente ainda: adaptador NFC-e por QR code.
-- Fase 3: ROP dinâmico (consumo*lead_time), previsão de ruptura, gasto por categoria,
-  alerta automático (cron + e-mail além do semanal já implementado).
+## Frontend — telas do dono (rodapé)
+- **🔑 Modo dono** — ajusta mínimo/ideal de cada produto; abre modal com linhas editáveis
+- **📷 Nota fiscal** — fluxo em 3 passos: foto → revisão → resultado
+- **📦 Meus Produtos** — lista de ativos e inativos, edição completa, histórico por produto, toggle de IA
+- **💰 Gastos** — gasto por categoria com seletor de período (30d/3m/12m) e gráfico anual Jan–Dez
+- **📊 Relatórios** — exportação Excel (5 tipos) e PDF (3 estilos); bibliotecas SheetJS/jsPDF carregadas sob demanda via CDN
+
+## Roadmap e status das fases
+
+| Fase | Status | Descrição |
+|------|--------|-----------|
+| Fase 1 | ✅ Completa | Ledger, login, PWA, offline, automações semanais |
+| Fase 2 | ✅ Completa | Foto por IA, confirmação em 3 passos, apelidos aprendidos |
+| Fase 3.1 | ✅ Completa | "Acaba em ~X dias" na lista principal |
+| Fase 3.3 | ✅ Completa | Gasto por categoria + gráfico anual |
+| Fase 3.2 | ❌ Fora do escopo | ROP dinâmico (alerta por consumo × lead_time) |
+| Fase 3.4 | ❌ Fora do escopo | Alerta diário de ruptura por push/e-mail |
+| Relatórios | ✅ Completa | Exportação Excel e PDF (v1.3.0) |
+
+### Pendentes / evolutivas (sem prazo)
+- Adaptador NFC-e por QR code (alternativa à foto para entrada de nota)
+- Gasto por produto (detalhar dentro da tela de Gastos)
+- ROP dinâmico e alerta diário — infraestrutura pronta (`lead_time_dias`, `dias_cobertura`), lógica não implementada por decisão do dono
 
 ## Reaproveitamento (panorama-patrimonio)
-Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, e criar uma rota
+Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, criar rota
 Express no padrão de lá. Ver docs/MODULO-COMPRAS.md.
