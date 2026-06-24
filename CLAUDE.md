@@ -98,7 +98,7 @@ Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abrevia
 - **📷 Nota fiscal** — fluxo em 3 passos: foto → revisão → resultado
 - **📦 Meus Produtos** — lista de ativos e inativos, edição completa, histórico por produto, toggle de IA
 - **💰 Gastos** — gasto por categoria com seletor de período (30d/3m/12m) e gráfico anual Jan–Dez
-- **📊 Relatórios** — exportação Excel (5 tipos) e PDF (3 estilos); bibliotecas SheetJS/jsPDF carregadas sob demanda via CDN
+- **📊 Relatórios** — dados na tela em acordeão: 4 seções colapsáveis (Estoque, Movimentações, Compras, Gastos), filtro por coluna em tempo real, botão imprimir via `window.print()` sem biblioteca externa
 
 ## Roadmap e status das fases
 
@@ -110,9 +110,10 @@ Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abrevia
 | Fase 3.3 | ✅ Completa | Gasto por categoria + gráfico anual |
 | Fase 3.2 | ❌ Fora do escopo | ROP dinâmico (alerta por consumo × lead_time) |
 | Fase 3.4 | ❌ Fora do escopo | Alerta diário de ruptura por push/e-mail |
-| Relatórios | ✅ Completa | Exportação Excel e PDF (v1.3.0) |
+| Relatórios | ✅ Completa | Acordeão on-screen com filtros e impressão (v1.4.0) |
 
 ### Pendentes / evolutivas (sem prazo)
+- Exportação Excel — removida do escopo em v1.4.0; infraestrutura de rotas `/api/exportar` já existe
 - Adaptador NFC-e por QR code (alternativa à foto para entrada de nota)
 - Gasto por produto (detalhar dentro da tela de Gastos)
 - ROP dinâmico e alerta diário — infraestrutura pronta (`lead_time_dias`, `dias_cobertura`), lógica não implementada por decisão do dono

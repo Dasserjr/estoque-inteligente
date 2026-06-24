@@ -1,5 +1,23 @@
 # Changelog — Estoque Inteligente
 
+## versão 1.4.0 · 23/06/2026
+
+### Relatórios — redesign acordeão
+
+- Modal de relatórios completamente refeito: em vez de botões de download, os dados aparecem **na tela** em tabelas filtráveis
+- 4 seções em acordeão (clique no título para expandir, × para fechar manualmente, abrir outro fecha o atual):
+  - 📦 **Estoque atual** — todos os produtos com situação, mínimo, ideal e dias de cobertura; linhas vermelhas para "Comprar", amarelas para "Atenção"
+  - 📋 **Movimentações (12 meses)** — uso, compras e ajustes
+  - 🛒 **Histórico de compras (12 meses)** — datas, mercados, descrições de nota, quantidades e preços
+  - 💰 **Gastos por categoria (12 meses)** — total e percentual por categoria
+- Filtro por coluna em tempo real em todas as seções (campo de texto por coluna, sem botão)
+- Contador de registros: "X de Y registros" quando há filtro ativo
+- Botão 🖨 Imprimir no cabeçalho: imprime apenas a seção aberta via `window.print()` (sem biblioteca externa)
+- Removido: SheetJS, jsPDF, html2canvas e todo código de exportação para arquivo (Excel vira evolutiva)
+- Service worker atualizado para v7 (forçar refresh nos dispositivos)
+
+---
+
 ## versão 1.3.0 · 23/06/2026
 
 ### Relatórios e Exportação (nova tela 📊)
