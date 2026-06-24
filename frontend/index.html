@@ -344,6 +344,7 @@
     <div class="step" id="step3">
       <div id="resultadoNota"></div>
       <button class="fechar" onclick="fecharNota()">✅ Concluído</button>
+      <button class="secundario" style="color:#dc2626;border-color:#dc2626;margin-top:8px" onclick="descartarNota()">🗑 Descartar itens pendentes</button>
     </div>
   </div>
 </div>
@@ -945,7 +946,7 @@ function abrirAjuda() {
 }
 
 // ===== NOTA FISCAL (Fase 2) =====
-let fotoBase64 = null, fotoMime = 'image/jpeg', itensExtraidos = [];
+let fotoBase64 = null, fotoMime = 'image/jpeg', itensExtraidos = [], _compraAtualId = null;
 
 function irStep(n) {
   for (let i = 1; i <= 3; i++) {
@@ -1035,6 +1036,7 @@ async function confirmarNota() {
   try {
     const r = await api('/compras/nota', { method:'POST', body: JSON.stringify({ itens: itensExtraidos }) });
     const dados = await r.json();
+    _compraAtualId = dados.compra_id;
     irStep(3);
     renderResultado(dados);
   } catch(e) {
@@ -1076,10 +1078,27 @@ async function vincularPend(compraItemId, catalogoId, btn) {
   } catch(e) { alert('Erro ao vincular item.'); }
 }
 
-function ignorarPend(compraItemId, btn) {
+async function ignorarPend(compraItemId, btn) {
   const bloco = document.getElementById('pend-'+compraItemId);
   bloco.querySelectorAll('button').forEach(b => b.disabled = true);
   btn.classList.add('sel');
+  try { await api(`/compras/item/${compraItemId}`, { method: 'DELETE' }); } catch(e) {}
+}
+
+async function descartarNota() {
+  if (!_compraAtualId) return;
+  if (!confirm('Descartar todos os itens pendentes desta nota? Esta ação não pode ser desfeita.')) return;
+  try {
+    await api(`/compras/nota/${_compraAtualId}`, { method: 'DELETE' });
+    document.querySelectorAll('.pend-item').forEach(el => {
+      el.querySelectorAll('button').forEach(b => b.disabled = true);
+      el.style.opacity = '0.4';
+    });
+    const aviso = document.createElement('p');
+    aviso.style.cssText = 'color:#64748b;font-size:13px;text-align:center;margin-top:12px';
+    aviso.textContent = 'Itens pendentes descartados.';
+    document.getElementById('resultadoNota').appendChild(aviso);
+  } catch(e) { alert('Erro ao descartar: ' + e.message); }
 }
 
 // ===== CONFIG / IA =====

@@ -133,4 +133,37 @@ router.post('/confirmar', autenticar, exigirDono, async (req, res) => {
   }
 });
 
+// DELETE /api/compras/item/:id — descarta item pendente; apaga a nota se ficar sem itens.
+router.delete('/item/:id', autenticar, exigirDono, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ erro: 'id inválido' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT compra_id FROM compra_itens WHERE id = $1 AND catalogo_id IS NULL`, [id]
+    );
+    if (!rows[0]) return res.status(404).json({ erro: 'item pendente não encontrado' });
+    const compra_id = rows[0].compra_id;
+    await pool.query(`DELETE FROM compra_itens WHERE id = $1`, [id]);
+    const { rows: rest } = await pool.query(
+      `SELECT id FROM compra_itens WHERE compra_id = $1`, [compra_id]
+    );
+    if (!rest.length) await pool.query(`DELETE FROM compras WHERE id = $1`, [compra_id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// DELETE /api/compras/nota/:id — descarta itens pendentes da nota; apaga a nota se ficar vazia.
+router.delete('/nota/:id', autenticar, exigirDono, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ erro: 'id inválido' });
+  try {
+    await pool.query(
+      `DELETE FROM compra_itens WHERE compra_id = $1 AND catalogo_id IS NULL`, [id]
+    );
+    const { rows } = await pool.query(`SELECT id FROM compra_itens WHERE compra_id = $1`, [id]);
+    if (!rows.length) await pool.query(`DELETE FROM compras WHERE id = $1`, [id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 module.exports = router;
