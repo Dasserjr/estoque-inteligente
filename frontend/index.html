@@ -857,9 +857,9 @@ async function _abrirRelatorio(tipo) {
   _relAberto = tipo;
   _relFiltros = {};
   const corpo = document.getElementById('rel-corpo-' + tipo);
-  corpo.style.display = '';
+  corpo.style.display = 'block';
   document.getElementById('rel-icn-' + tipo).textContent = '▼';
-  document.getElementById('rel-x-' + tipo).style.display = '';
+  document.getElementById('rel-x-' + tipo).style.display = 'inline';
   // loading placeholder
   document.getElementById('rel-tbl-' + tipo).querySelector('tbody').innerHTML =
     `<tr><td colspan="20" style="text-align:center;padding:24px;color:#64748b">
