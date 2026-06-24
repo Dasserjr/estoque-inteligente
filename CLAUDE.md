@@ -15,7 +15,8 @@ mutável no catálogo — é isso que destrava previsão, tendência e gasto.
 ## Premissas do modelo
 - **Tudo unitário**: menor fração de uso. Comprou um fardo de 12 panos → entra como 12 unidades.
 - **Nome canônico inclui medida**: "Sabão Barra 90g", não só "Sabão Barra". Facilita compra.
-- **Mínimo jamais zero**: `min_nivel` padrão = 1. "Nunca deixar acabar" é pilar do sistema.
+- **Mínimo padrão = 1**: pilar "nunca deixar acabar". Mínimo 0 é permitido para produtos de grande rendimento ou uso esporádico — entra na lista só quando o último for aberto. Ideal sempre ≥ 1.
+- **Produto aberto não conta**: estoque = unidades fechadas/inteiras na prateleira. O item em uso não é reserva; a reposição deve ocorrer antes de ele acabar.
 - **Padrão ao cadastrar**: mínimo 1, ideal 2. Ajustável depois em Meus Produtos.
 
 ## Stack

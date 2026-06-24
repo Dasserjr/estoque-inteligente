@@ -279,18 +279,26 @@
       </div>
       <div class="cfgBox">
         <p style="margin:0 0 10px;font-size:15px;font-weight:700">🎨 Cores</p>
-        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia<br>🟡 Atenção — chegou em 2 unidades<br>🔴 Comprar — 1 ou menos, já na lista</p>
+        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia<br>🟡 Atenção — reserva baixa, está acabando<br>🔴 Comprar — atingiu o mínimo, já na lista</p>
+      </div>
+      <div class="cfgBox">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700">⚙️ Mínimo = 0</p>
+        <p style="margin:0;font-size:14px;color:#475569">Produtos com mínimo 0 só entram na lista quando o último for aberto. Use para itens grandes ou de uso esporádico, sem necessidade de reserva.</p>
       </div>
     </div>
     <div id="ajudaEmpregada" style="display:none">
       <h2>❓ Como usar o app</h2>
+      <div class="cfgBox" style="border-left:4px solid #dc2626;background:#fef2f2">
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#dc2626">⚠️ PRODUTO ABERTO NÃO CONTA!</p>
+        <p style="margin:0;font-size:14px;color:#475569">Conte apenas os produtos <b>fechados e inteiros</b> na prateleira. O que está sendo usado no momento <b>não entra na contagem</b>.<br><br><b>Exemplo:</b> 1 detergente aberto na pia + 2 frascos fechados no armário → o estoque é <b>2</b>. Quando abrir um dos fechados, aperte <b>–</b> no app.</p>
+      </div>
       <div class="cfgBox">
         <p style="margin:0 0 10px;font-size:15px;font-weight:700">O que fazer toda sexta</p>
-        <p style="margin:0;font-size:14px;color:#475569">Abra o app e aperte <b>–</b> em cada produto que foi aberto ou terminou durante a semana.</p>
+        <p style="margin:0;font-size:14px;color:#475569">Abra o app e aperte <b>–</b> em cada produto que foi aberto durante a semana. Lembre: só conta o que está <b>fechado</b> na prateleira.</p>
       </div>
       <div class="cfgBox">
         <p style="margin:0 0 10px;font-size:15px;font-weight:700">🎨 O que significam as cores</p>
-        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia, não precisa fazer nada<br>🟡 Atenção — chegou em 2, está acabando<br>🔴 Comprar — chegou em 1 ou menos</p>
+        <p style="margin:0;font-size:14px;color:#475569">🟢 Ok — estoque em dia, não precisa fazer nada<br>🟡 Atenção — reserva baixa, avisando que vai acabar<br>🔴 Comprar — atingiu o mínimo, já está na lista</p>
       </div>
       <div class="cfgBox">
         <p style="margin:0 0 10px;font-size:15px;font-weight:700">🛒 Lista de compras</p>
@@ -479,8 +487,9 @@
       <input id="editSetor" type="text" placeholder="Ex: Dispensa, Banheiro">
     </div>
     <div class="cfgBox">
-      <label>Nível mínimo *</label>
-      <input id="editMin" type="number" min="1" value="1">
+      <label>Mínimo * (0 = repõe só quando abrir o último)</label>
+      <input id="editMin" type="number" min="0" value="1" oninput="_avisarMin('edit')">
+      <p id="editMinAviso" style="display:none;font-size:12px;color:#d97706;margin:2px 0 4px">⚠️ Entra na lista só quando o último for aberto — sem reserva de segurança!</p>
       <label>Nível ideal</label>
       <input id="editIdeal" type="number" min="1" value="2">
       <label>Lead time (dias até reposição)</label>
@@ -529,8 +538,9 @@
       <input id="npCategoria" type="text" placeholder="Ex: Limpeza, Cozinha, Higiene">
     </div>
     <div class="cfgBox">
-      <label>Nível mínimo * (alerta de reposição)</label>
-      <input id="npMin" type="number" min="1" value="1">
+      <label>Mínimo * (0 = repõe só quando abrir o último)</label>
+      <input id="npMin" type="number" min="0" value="1" oninput="_avisarMin('np')">
+      <p id="npMinAviso" style="display:none;font-size:12px;color:#d97706;margin:2px 0 4px">⚠️ Entra na lista só quando o último for aberto — sem reserva de segurança!</p>
       <label>Nível ideal (quanto manter em casa)</label>
       <input id="npIdeal" type="number" min="1" value="2">
     </div>
@@ -654,11 +664,12 @@ function render(){
       const txt=i.situacao==="comprar"?"Comprar":(i.situacao==="atencao"?"Atenção":"Ok");
       const diasTxt=i.dias_cobertura?`acaba em ~${i.dias_cobertura} dias`:'';
       const uso=[i.categoria,diasTxt].filter(Boolean).join(' · ');
+      const ultimoTag=i.estoque===1&&i.min_nivel===0?`<span style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:4px;font-weight:700">último</span>`:'';
       const card=document.createElement("div"); card.className="card "+i.situacao;
       card.innerHTML=`<div class="icone">${i.icone||"🧴"}</div>
         <div class="info"><div class="nome">${i.nome_canonico}</div>
         <div class="uso">${uso}</div>
-        <span class="bola">${txt}</span></div>
+        <span class="bola">${txt}</span>${ultimoTag}</div>
         <div class="controles">
           <button class="btn btnMenos" onclick="mov(${i.id},-1)">–</button>
           <div class="num">${i.estoque}</div>
@@ -690,7 +701,7 @@ function abrirDono(){
     const row=document.createElement("div"); row.className="linhaDono";
     row.innerHTML=`<span class="nm">${i.icone||""} ${i.nome_canonico}</span>
       <input type="number" value="${i.estoque}" data-id="${i.id}" data-k="estoque">
-      <input type="number" value="${i.min_nivel}" data-id="${i.id}" data-k="min_nivel">
+      <input type="number" min="0" value="${i.min_nivel}" data-id="${i.id}" data-k="min_nivel">
       <input type="number" value="${i.par_level}" data-id="${i.id}" data-k="par_level">`;
     cont.appendChild(row);
   });
@@ -1190,6 +1201,7 @@ function abrirEditar(id) {
   document.getElementById('editTamUn').value = tu;
   document.getElementById('editSetor').value = p.setor || '';
   document.getElementById('editMin').value = p.min_nivel;
+  _avisarMin('edit');
   document.getElementById('editIdeal').value = p.par_level;
   document.getElementById('editLead').value = p.lead_time_dias || 7;
   const btn = document.getElementById('btnInativarProduto');
@@ -1210,7 +1222,7 @@ async function salvarProduto() {
     categoria: document.getElementById('editCategoria').value.trim(),
     tamanho: _composeTam(document.getElementById('editTamVal').value.trim(), document.getElementById('editTamUn').value),
     setor: document.getElementById('editSetor').value.trim(),
-    min_nivel: +document.getElementById('editMin').value || 1,
+    min_nivel: Math.max(0, +document.getElementById('editMin').value),
     par_level: +document.getElementById('editIdeal').value || 2,
     lead_time_dias: +document.getElementById('editLead').value || 7,
   };
@@ -1296,6 +1308,7 @@ function abrirNovoProduto(ctx) {
   document.getElementById('npIcone').value = '🧴';
   document.getElementById('npCategoria').value = '';
   document.getElementById('npMin').value = '1';
+  _avisarMin('np');
   document.getElementById('npIdeal').value = '2';
   if (ctx?.descricaoNota) {
     const { val, un } = _extrairTamanhoDeTexto(ctx.descricaoNota);
@@ -1317,6 +1330,11 @@ function abrirNovoProduto(ctx) {
       <b>Da nota fiscal:</b> "${ctx.descricaoNota}"${preco}</div>`;
   } else { orig.innerHTML = ''; }
   document.getElementById('modalNovoProduto').classList.add('show');
+}
+
+function _avisarMin(pref) {
+  const v = +document.getElementById(pref + 'Min').value;
+  document.getElementById(pref + 'MinAviso').style.display = v === 0 ? '' : 'none';
 }
 
 function _capitalizarNome(t) {
@@ -1362,7 +1380,7 @@ async function salvarNovoProduto() {
     nome_canonico,
     categoria: document.getElementById('npCategoria').value.trim(),
     tamanho,
-    min_nivel: +document.getElementById('npMin').value || 1,
+    min_nivel: Math.max(0, +document.getElementById('npMin').value),
     par_level: +document.getElementById('npIdeal').value || 2,
   };
   try {
