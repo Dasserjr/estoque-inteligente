@@ -668,7 +668,7 @@ function render(){
   const comprar=listaCompras();
   const aviso=document.getElementById("aviso"), tc=document.getElementById("tudoCerto");
   if(comprar.length){ aviso.classList.add("show"); tc.classList.remove("show");
-    document.getElementById("listaCompras").innerHTML=comprar.map(i=>`<li>${i.nome_canonico}</li>`).join("");
+    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li>${i.nome_canonico}${q>1?` <b>(${q})</b>`:""}</li>`;}).join("");
   } else { aviso.classList.remove("show"); tc.classList.add("show"); }
 }
 
