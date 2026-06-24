@@ -2,16 +2,26 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const app = express();
 app.set('trust proxy', 1);                  // atrás do proxy do Railway
 
-app.use(helmet({ contentSecurityPolicy: false }));  // frontend usa CDN (Tailwind)
-app.use(cors());                            // app doméstico; mesma origem na prática
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: { erro: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+
 // API
+app.use('/api/login', loginLimiter);
 app.use('/api', require('./routes/auth'));          // POST /api/login
 app.use('/api/itens', require('./routes/itens'));
 app.use('/api/compras', require('./routes/compras'));

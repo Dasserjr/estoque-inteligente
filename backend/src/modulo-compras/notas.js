@@ -66,63 +66,85 @@ async function casarItem(db, descricao, gtin) {
 }
 
 // Processa uma nota inteira (itens já extraídos).
+// Usa transação explícita: falha em qualquer item faz ROLLBACK de tudo.
 async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) {
   if (!Array.isArray(itens) || !itens.length) return { erro: 'nota sem itens' };
-  const { rows: cr } = await db.query(
-    `INSERT INTO compras (mercado, chave_nfce, total, origem) VALUES ($1,$2,$3,$4) RETURNING id`,
-    [mercado || null, chave_nfce || null, total ?? null, origem || 'manual']
-  );
-  const compra_id = cr[0].id;
-  const aplicados = [], pendentes = [];
-  for (const it of itens) {
-    const m = await casarItem(db, it.descricao, it.gtin);
-    if (m.catalogo_id) {
-      await db.query(
-        `INSERT INTO compra_itens (compra_id, catalogo_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4,$5)`,
-        [compra_id, m.catalogo_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
-      );
-      await db.query(
-        `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'sistema',$3)`,
-        [m.catalogo_id, it.qtd ?? 1, compra_id]
-      );
-      aplicados.push({ ...it, catalogo_id: m.catalogo_id, via: m.confianca, score: m.score });
-    } else {
-      const { rows: ci } = await db.query(
-        `INSERT INTO compra_itens (compra_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4) RETURNING id`,
-        [compra_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
-      );
-      pendentes.push({ compra_item_id: ci[0].id, ...it, sugestoes: m.sugestoes });
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: cr } = await client.query(
+      `INSERT INTO compras (mercado, chave_nfce, total, origem) VALUES ($1,$2,$3,$4) RETURNING id`,
+      [mercado || null, chave_nfce || null, total ?? null, origem || 'manual']
+    );
+    const compra_id = cr[0].id;
+    const aplicados = [], pendentes = [];
+    for (const it of itens) {
+      const m = await casarItem(client, it.descricao, it.gtin);
+      if (m.catalogo_id) {
+        await client.query(
+          `INSERT INTO compra_itens (compra_id, catalogo_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4,$5)`,
+          [compra_id, m.catalogo_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
+        );
+        await client.query(
+          `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'sistema',$3)`,
+          [m.catalogo_id, it.qtd ?? 1, compra_id]
+        );
+        aplicados.push({ ...it, catalogo_id: m.catalogo_id, via: m.confianca, score: m.score });
+      } else {
+        const { rows: ci } = await client.query(
+          `INSERT INTO compra_itens (compra_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4) RETURNING id`,
+          [compra_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
+        );
+        pendentes.push({ compra_item_id: ci[0].id, ...it, sugestoes: m.sugestoes });
+      }
     }
+    await client.query('COMMIT');
+    return { compra_id, aplicados, pendentes };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
-  return { compra_id, aplicados, pendentes };
 }
 
 // Confirmação humana: vincula (ou cria novo), aprende o apelido e dá entrada.
+// Usa transação explícita: evento + apelido são atômicos.
 async function confirmarItem(db, { compra_item_id, catalogo_id, novo, gtin, aprender = true }) {
-  const { rows } = await db.query(`SELECT * FROM compra_itens WHERE id = $1`, [compra_item_id]);
-  const ci = rows[0];
-  if (!ci) return { erro: 'item de compra não encontrado' };
-  let alvoId = catalogo_id;
-  if (!alvoId && novo) {
-    const { rows: nr } = await db.query(
-      `INSERT INTO catalogo (nome_canonico, categoria, unidade, par_level, min_nivel, icone) VALUES ($1,$2,'un',1,1,'novo') RETURNING id`,
-      [novo.nome_canonico, novo.categoria || null]
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`SELECT * FROM compra_itens WHERE id = $1`, [compra_item_id]);
+    const ci = rows[0];
+    if (!ci) { await client.query('ROLLBACK'); return { erro: 'item de compra não encontrado' }; }
+    let alvoId = catalogo_id;
+    if (!alvoId && novo) {
+      const { rows: nr } = await client.query(
+        `INSERT INTO catalogo (nome_canonico, categoria, unidade, par_level, min_nivel, icone) VALUES ($1,$2,'un',1,1,'novo') RETURNING id`,
+        [novo.nome_canonico, novo.categoria || null]
+      );
+      alvoId = nr[0].id;
+    }
+    if (!alvoId) { await client.query('ROLLBACK'); return { erro: 'informe catalogo_id ou novo' }; }
+    await client.query(`UPDATE compra_itens SET catalogo_id = $1 WHERE id = $2`, [alvoId, compra_item_id]);
+    await client.query(
+      `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'dono',$3)`,
+      [alvoId, ci.qtd ?? 1, ci.compra_id]
     );
-    alvoId = nr[0].id;
+    if (aprender && ci.descricao_nota) {
+      await client.query(
+        `INSERT INTO apelidos (catalogo_id, texto_na_nota, gtin, fonte) VALUES ($1,$2,$3,'confirmacao')`,
+        [alvoId, ci.descricao_nota, gtin || null]
+      );
+    }
+    await client.query('COMMIT');
+    return { ok: true, catalogo_id: alvoId };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
-  if (!alvoId) return { erro: 'informe catalogo_id ou novo' };
-  await db.query(`UPDATE compra_itens SET catalogo_id = $1 WHERE id = $2`, [alvoId, compra_item_id]);
-  await db.query(
-    `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'dono',$3)`,
-    [alvoId, ci.qtd ?? 1, ci.compra_id]
-  );
-  if (aprender && ci.descricao_nota) {
-    await db.query(
-      `INSERT INTO apelidos (catalogo_id, texto_na_nota, gtin, fonte) VALUES ($1,$2,$3,'confirmacao')`,
-      [alvoId, ci.descricao_nota, gtin || null]
-    );
-  }
-  return { ok: true, catalogo_id: alvoId };
 }
 
 // ===== ADAPTADORES DE ENTRADA (a implementar — cada um devolve itens[]) =====

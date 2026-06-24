@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS compra_itens (
 );
 CREATE INDEX IF NOT EXISTS idx_compraitens_cat ON compra_itens(catalogo_id);
 
+-- Subscriptions de push notification (criadas também em runtime por push.js).
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id        SERIAL PRIMARY KEY,
+  endpoint  TEXT NOT NULL UNIQUE,
+  p256dh    TEXT,
+  auth      TEXT,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Configurações do sistema (chave/valor).
 CREATE TABLE IF NOT EXISTS config (
   chave TEXT PRIMARY KEY,

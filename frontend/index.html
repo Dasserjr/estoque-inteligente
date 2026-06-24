@@ -561,6 +561,7 @@ let outbox = JSON.parse(localStorage.getItem("outbox_v1") || "[]");
 
 function salvarOutbox(){ localStorage.setItem("outbox_v1", JSON.stringify(outbox)); }
 function salvarCfg(){ localStorage.setItem("cfg_v1", JSON.stringify(cfg)); }
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 let _timerConn = null;
 function setConn(off){
   const el=document.getElementById("banner-conn");
@@ -664,11 +665,11 @@ function render(){
     .forEach(i=>{
       const txt=i.situacao==="comprar"?"Comprar":(i.situacao==="atencao"?"Atenção":"Ok");
       const diasTxt=i.dias_cobertura?`acaba em ~${i.dias_cobertura} dias`:'';
-      const uso=[i.categoria,diasTxt].filter(Boolean).join(' · ');
+      const uso=[esc(i.categoria),diasTxt].filter(Boolean).join(' · ');
       const ultimoTag=i.estoque===1&&i.min_nivel===0?`<span style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:4px;font-weight:700">último</span>`:'';
       const card=document.createElement("div"); card.className="card "+i.situacao;
-      card.innerHTML=`<div class="icone">${i.icone||"🧴"}</div>
-        <div class="info"><div class="nome">${i.nome_canonico}</div>
+      card.innerHTML=`<div class="icone">${esc(i.icone||"🧴")}</div>
+        <div class="info"><div class="nome">${esc(i.nome_canonico)}</div>
         <div class="uso">${uso}</div>
         <span class="bola">${txt}</span>${ultimoTag}</div>
         <div class="controles">
@@ -680,7 +681,7 @@ function render(){
   const comprar=listaCompras();
   const aviso=document.getElementById("aviso"), tc=document.getElementById("tudoCerto");
   if(comprar.length){ aviso.classList.add("show"); tc.classList.remove("show");
-    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li>${i.nome_canonico}${q>1?` <b>(${q})</b>`:""}</li>`;}).join("");
+    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li>${esc(i.nome_canonico)}${q>1?` <b>(${q})</b>`:""}</li>`;}).join("");
   } else { aviso.classList.remove("show"); tc.classList.add("show"); }
 }
 
@@ -700,7 +701,7 @@ function abrirDono(){
     <span class="nm">Produto</span><span class="lab">Estoque</span><span class="lab">Mín.</span><span class="lab">Ideal</span></div>`;
   itens.forEach(i=>{
     const row=document.createElement("div"); row.className="linhaDono";
-    row.innerHTML=`<span class="nm">${i.icone||""} ${i.nome_canonico}</span>
+    row.innerHTML=`<span class="nm">${esc(i.icone||"")} ${esc(i.nome_canonico)}</span>
       <input type="number" value="${i.estoque}" data-id="${i.id}" data-k="estoque">
       <input type="number" min="0" value="${i.min_nivel}" data-id="${i.id}" data-k="min_nivel">
       <input type="number" value="${i.par_level}" data-id="${i.id}" data-k="par_level">`;
@@ -772,7 +773,7 @@ function renderGastos(gData, mData) {
         const pct = gData.total > 0 ? Math.round((c.total / gData.total) * 100) : 0;
         const vf = c.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
         return `<div class="gasto-cat">
-          <div class="gasto-cat-topo"><div class="gasto-cat-nm">${c.categoria}</div><div class="gasto-cat-val">${vf}</div></div>
+          <div class="gasto-cat-topo"><div class="gasto-cat-nm">${esc(c.categoria)}</div><div class="gasto-cat-val">${vf}</div></div>
           <div class="gasto-cat-pct">${pct}% do total</div>
           <div class="gasto-bar-wrap"><div class="gasto-bar" style="width:${pct}%"></div></div>
         </div>`;
@@ -922,7 +923,7 @@ function _renderTabela(tipo) {
   tbl.querySelector('tbody').innerHTML = filtered.length
     ? filtered.map(row => {
         const cls = rc(row);
-        return `<tr${cls?` class="${cls}"`:''}>` + row.map(c => `<td>${c??'—'}</td>`).join('') + '</tr>';
+        return `<tr${cls?` class="${cls}"`:''}>` + row.map(c => `<td>${esc(c??'—')}</td>`).join('') + '</tr>';
       }).join('')
     : `<tr><td colspan="${def.cols.length}" style="text-align:center;padding:24px;color:#94a3b8">Nenhum registro encontrado.</td></tr>`;
   const total = dados.length, show = filtered.length;
@@ -946,7 +947,7 @@ function abrirAjuda() {
 }
 
 // ===== NOTA FISCAL (Fase 2) =====
-let fotoBase64 = null, fotoMime = 'image/jpeg', itensExtraidos = [], _compraAtualId = null;
+let fotoBase64 = null, fotoMime = 'image/jpeg', itensExtraidos = [], _compraAtualId = null, _pendCtx = {};
 
 function irStep(n) {
   for (let i = 1; i <= 3; i++) {
@@ -1022,7 +1023,7 @@ function renderItensExtraidos() {
   }
   cont.innerHTML = itensExtraidos.map((it, idx) => `
     <div class="itemExtraido">
-      <div class="desc">${it.descricao}</div>
+      <div class="desc">${esc(it.descricao)}</div>
       <input type="number" min="0.1" step="0.1" value="${Number(it.qtd||1).toFixed(1)}"
         oninput="itensExtraidos[${idx}].qtd=+this.value">
       <div class="preco">${it.preco_unit!=null ? 'R$&nbsp;'+Number(it.preco_unit).toFixed(2) : ''}</div>
@@ -1048,21 +1049,22 @@ function renderResultado(dados) {
   let html = '';
   if (dados.aplicados && dados.aplicados.length) {
     html += `<div class="resultado-ok"><h3>✅ ${dados.aplicados.length} item(s) registrado(s) no estoque</h3>`;
-    html += dados.aplicados.map(a=>`<div style="font-size:14px;padding:2px 0">• ${a.descricao}</div>`).join('');
+    html += dados.aplicados.map(a=>`<div style="font-size:14px;padding:2px 0">• ${esc(a.descricao)}</div>`).join('');
     html += '</div>';
   }
   if (dados.pendentes && dados.pendentes.length) {
     html += `<div class="resultado-pend"><h3>❓ ${dados.pendentes.length} item(s) não reconhecido(s)</h3>`;
     html += '<p style="font-size:13px;color:#92400e;margin:0 0 10px">Vincule ao catálogo ou ignore cada um.</p>';
-    html += dados.pendentes.map(p=>`
+    _pendCtx = {};
+    html += dados.pendentes.map(p=>{ _pendCtx[p.compra_item_id]={compraItemId:p.compra_item_id,descricaoNota:p.descricao,precoUnit:p.preco_unit}; return `
       <div class="pend-item" id="pend-${p.compra_item_id}">
-        <div class="pend-desc">${p.descricao}</div>
+        <div class="pend-desc">${esc(p.descricao)}</div>
         <div class="pend-sugest">
-          ${(p.sugestoes||[]).map(s=>`<button onclick="vincularPend(${p.compra_item_id},${s.catalogo_id},this)">${s.base}</button>`).join('')}
-          <button style="border-color:#6366f1;color:#6366f1" onclick="abrirNovoProduto({compraItemId:${p.compra_item_id},descricaoNota:'${p.descricao.replace(/'/g,"\\'")}',precoUnit:${p.preco_unit||null}})">➕ Cadastrar novo</button>
+          ${(p.sugestoes||[]).map(s=>`<button onclick="vincularPend(${p.compra_item_id},${s.catalogo_id},this)">${esc(s.base)}</button>`).join('')}
+          <button style="border-color:#6366f1;color:#6366f1" onclick="abrirNovoProduto(_pendCtx[${p.compra_item_id}])">➕ Cadastrar novo</button>
           <button class="ignorar" onclick="ignorarPend(${p.compra_item_id},this)">Ignorar</button>
         </div>
-      </div>`).join('');
+      </div>`;}).join('');
     html += '</div>';
   }
   if (!html) html = '<p style="color:#64748b;text-align:center">Nenhum item processado.</p>';
@@ -1177,30 +1179,30 @@ function renderMeusProdutos() {
 
 function renderCardProd(p) {
   const nc = Number(p.total_compras);
-  const inf = [p.categoria, p.unidade].filter(Boolean).join(' · ');
+  const inf = [esc(p.categoria), esc(p.unidade)].filter(Boolean).join(' · ');
   const compras = nc > 0 ? `${nc} compra${nc>1?'s':''}` : 'Sem compras';
   const ult = p.ultima_compra ? ` · última ${new Date(p.ultima_compra).toLocaleDateString('pt-BR')}` : '';
   if (p.ativo) {
     return `<div class="card-prod">
       <div class="card-prod-topo">
-        <div class="card-prod-ic">${p.icone||'🧴'}</div>
-        <div><div class="card-prod-nm">${p.nome_canonico}</div>
+        <div class="card-prod-ic">${esc(p.icone||'🧴')}</div>
+        <div><div class="card-prod-nm">${esc(p.nome_canonico)}</div>
         <div class="card-prod-inf">${inf}${inf?' · ':''}mín ${p.min_nivel} / ideal ${p.par_level}</div>
         <div class="card-prod-inf">${compras}${ult}</div></div>
       </div>
       <div class="card-prod-acoes">
-        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${p.nome_canonico.replace(/'/g,"\\'")}')">📋 Histórico</button>
+        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${esc(p.nome_canonico).replace(/'/g,"\\'")}')">📋 Histórico</button>
         <button class="btn-ac az" onclick="abrirEditar(${p.id})">✏️ Editar</button>
       </div></div>`;
   } else {
     return `<div class="card-prod inativo">
       <div class="card-prod-topo">
-        <div class="card-prod-ic">${p.icone||'🧴'}</div>
-        <div><div class="card-prod-nm">${p.nome_canonico} <span style="font-size:11px;color:#94a3b8">(inativo)</span></div>
+        <div class="card-prod-ic">${esc(p.icone||'🧴')}</div>
+        <div><div class="card-prod-nm">${esc(p.nome_canonico)} <span style="font-size:11px;color:#94a3b8">(inativo)</span></div>
         <div class="card-prod-inf">${compras}${ult}</div></div>
       </div>
       <div class="card-prod-acoes">
-        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${p.nome_canonico.replace(/'/g,"\\'")}')">📋 Histórico</button>
+        <button class="btn-ac" onclick="abrirHistorico(${p.id},'${esc(p.nome_canonico).replace(/'/g,"\\'")}')">📋 Histórico</button>
         <button class="btn-ac vd" onclick="reativarProduto(${p.id})">↺ Reativar</button>
         <button class="btn-ac vm" onclick="excluirProduto(${p.id})">🗑️</button>
       </div></div>`;
@@ -1302,7 +1304,7 @@ async function abrirHistorico(id, nome) {
     rows.forEach(d => {
       html += `<tr style="border-bottom:1px solid #f8fafc">
         <td style="padding:8px 4px;white-space:nowrap;color:#64748b">${new Date(d.data).toLocaleDateString('pt-BR')}</td>
-        <td style="padding:8px 4px;font-size:13px">${d.descricao_nota || '—'}</td>
+        <td style="padding:8px 4px;font-size:13px">${esc(d.descricao_nota || '—')}</td>
         <td style="padding:8px 4px;text-align:right;font-weight:600">${d.preco_unit!=null?'R$&nbsp;'+Number(d.preco_unit).toFixed(2):'—'}</td>
       </tr>`;
     });
@@ -1346,7 +1348,7 @@ function abrirNovoProduto(ctx) {
   if (ctx?.descricaoNota) {
     const preco = ctx.precoUnit != null ? ' · R$ '+Number(ctx.precoUnit).toFixed(2) : '';
     orig.innerHTML = `<div style="background:#fef3c7;border-radius:10px;padding:10px;margin-bottom:12px;font-size:13px;color:#92400e">
-      <b>Da nota fiscal:</b> "${ctx.descricaoNota}"${preco}</div>`;
+      <b>Da nota fiscal:</b> "${esc(ctx.descricaoNota)}"${preco}</div>`;
   } else { orig.innerHTML = ''; }
   document.getElementById('modalNovoProduto').classList.add('show');
 }

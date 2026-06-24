@@ -3,7 +3,8 @@
   "version": "1.4.6",
   "private": true,
   "scripts": {
-    "start": "node backend/src/index.js",
+    "start": "node scripts/bump-sw.js && node backend/src/index.js",
+    "bump-sw": "node scripts/bump-sw.js",
     "postinstall": "npm install --prefix backend",
     "dev": "cd backend && npm run dev",
     "seed": "cd backend && npm run seed"
