@@ -361,7 +361,7 @@
     </div>
     <div id="linhasDono"></div>
     <button class="secundario" onclick="irParaNovoProduto()">＋ Adicionar produto</button>
-    <button class="fechar" onclick="fecharDono()">Salvar e fechar</button>
+    <button id="btnSalvarDono" class="fechar" onclick="fecharDono()">Salvar e fechar</button>
     <p class="small">Marcações feitas offline são enviadas quando a conexão volta.</p>
   </div>
 </div>
@@ -713,17 +713,33 @@ function abrirDono(){
 async function fecharDono({ refresh = true } = {}){
   cfg.fone=document.getElementById("cfgFone").value.trim();
   cfg.email=document.getElementById("cfgEmail").value.trim(); salvarCfg();
+
+  const reqs = [];
   for(const i of itens){
     const est=+document.querySelector(`input[data-id="${i.id}"][data-k="estoque"]`).value;
     const mn=+document.querySelector(`input[data-id="${i.id}"][data-k="min_nivel"]`).value;
     const par=+document.querySelector(`input[data-id="${i.id}"][data-k="par_level"]`).value;
-    if(mn!==i.min_nivel||par!==i.par_level){
-      await api(`/itens/${i.id}`,{method:"PUT",body:JSON.stringify({min_nivel:mn,par_level:par})}).catch(()=>{});
-    }
-    if(est!==i.estoque){
-      await api(`/itens/${i.id}/mov`,{method:"POST",body:JSON.stringify({delta:est-i.estoque,quem:"dono"})}).catch(()=>{});
-    }
+    if(mn!==i.min_nivel||par!==i.par_level)
+      reqs.push(()=>api(`/itens/${i.id}`,{method:"PUT",body:JSON.stringify({min_nivel:mn,par_level:par})}).catch(()=>{}));
+    if(est!==i.estoque)
+      reqs.push(()=>api(`/itens/${i.id}/mov`,{method:"POST",body:JSON.stringify({delta:est-i.estoque,quem:"dono"})}).catch(()=>{}));
   }
+
+  const btn = document.getElementById('btnSalvarDono');
+  if(reqs.length){
+    btn.disabled = true;
+    btn.textContent = `⏳ Salvando 0/${reqs.length}...`;
+    let feitos = 0;
+    await Promise.all(reqs.map(r => r().then(() => {
+      feitos++;
+      btn.textContent = `⏳ Salvando ${feitos}/${reqs.length}...`;
+    })));
+    btn.textContent = '✅ Salvo!';
+    await new Promise(res => setTimeout(res, 700));
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Salvar e fechar';
   document.getElementById("modalDono").classList.remove("show");
   if (refresh) carregar();
 }
