@@ -1193,6 +1193,7 @@ function renderCardProd(p) {
       <div class="card-prod-acoes">
         <button class="btn-ac" onclick="abrirHistorico(${p.id},'${esc(p.nome_canonico).replace(/'/g,"\\'")}')">📋 Histórico</button>
         <button class="btn-ac az" onclick="abrirEditar(${p.id})">✏️ Editar</button>
+        <button class="btn-ac vm" onclick="inativarProduto(${p.id})">🚫 Inativar</button>
       </div></div>`;
   } else {
     return `<div class="card-prod inativo">
@@ -1262,6 +1263,15 @@ async function toggleInativoProduto() {
     document.getElementById('modalEditarProduto').classList.remove('show');
     await carregarTodos(); carregar();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function inativarProduto(id) {
+  const p = todosItens.find(x => x.id === id);
+  if (!confirm(`Inativar "${p?.nome_canonico}"?\nEle sairá da lista principal, mas o histórico fica preservado.`)) return;
+  try {
+    await api(`/itens/${id}`, { method:'PUT', body: JSON.stringify({ ativo: false }) });
+    await carregarTodos(); carregar();
+  } catch(e) { alert('Erro ao inativar: ' + e.message); }
 }
 
 async function reativarProduto(id) {
