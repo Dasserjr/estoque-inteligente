@@ -115,11 +115,21 @@ router.put('/:id', autenticar, exigirDono, async (req, res) => {
   let i = 1;
   for (const k of campos) if (k in b) { sets.push(`${k} = $${i++}`); vals.push(b[k]); }
   if (!sets.length) return res.status(400).json({ erro: 'nada para atualizar' });
+  if (b.nome_canonico) {
+    const { rows: dup } = await pool.query(
+      `SELECT id FROM catalogo WHERE LOWER(nome_canonico) = LOWER($1) AND id <> $2 LIMIT 1`,
+      [b.nome_canonico, id]
+    );
+    if (dup.length)
+      return res.status(409).json({ erro: `Já existe um produto com este nome: "${b.nome_canonico}".` });
+  }
   vals.push(id);
   try {
     await pool.query(`UPDATE catalogo SET ${sets.join(', ')} WHERE id = $${i}`, vals);
     res.json({ ok: true });
   } catch (e) {
+    if (e.code === '23505')
+      return res.status(409).json({ erro: 'Já existe um produto com este nome.' });
     res.status(500).json({ erro: e.message });
   }
 });
