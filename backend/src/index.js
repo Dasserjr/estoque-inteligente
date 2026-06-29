@@ -8,7 +8,20 @@ const path = require('path');
 const app = express();
 app.set('trust proxy', 1);                  // atrás do proxy do Railway
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'", "'unsafe-inline'"],
+      styleSrc:       ["'self'", "'unsafe-inline'"],
+      imgSrc:         ["'self'", "blob:", "data:"],
+      connectSrc:     ["'self'"],
+      fontSrc:        ["'self'"],
+      objectSrc:      ["'none'"],
+      frameAncestors: ["'none'"],
+    }
+  }
+}));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
