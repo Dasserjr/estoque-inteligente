@@ -1,5 +1,5 @@
-// Roda no startup do Railway para garantir o índice único em catalogo.nome_canonico.
-// Usa || para localizar pg tanto no Railway (backend/node_modules) quanto localmente.
+// Cria UNIQUE INDEX em catalogo.nome_canonico (case-insensitive).
+// Nunca derruba o servidor — erros são logados e ignorados.
 let Pool;
 try { Pool = require('pg').Pool; } catch { Pool = require('../backend/node_modules/pg').Pool; }
 
@@ -15,18 +15,20 @@ async function run() {
       GROUP BY LOWER(nome_canonico) HAVING COUNT(*) > 1
     `);
     if (dups.length) {
-      console.error('[migration-b3] ERRO: duplicatas ativas encontradas:', dups);
-      process.exit(1);
+      console.warn('[migration-b3] Duplicatas ativas encontradas — índice adiado:', dups.map(d => d.nome).join(', '));
+      return;
     }
     await client.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS catalogo_nome_uniq
       ON catalogo (LOWER(nome_canonico))
     `);
     console.log('[migration-b3] Índice catalogo_nome_uniq OK.');
+  } catch (e) {
+    console.warn('[migration-b3] Aviso (não fatal):', e.message);
   } finally {
     client.release();
     await pool.end();
   }
 }
 
-run().catch(e => { console.error('[migration-b3]', e.message); process.exit(1); });
+run().catch(e => console.warn('[migration-b3] Aviso (não fatal):', e.message));
