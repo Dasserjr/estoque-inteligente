@@ -3,7 +3,7 @@
   "version": "1.5.0",
   "private": true,
   "scripts": {
-    "start": "node scripts/bump-sw.js && node backend/src/index.js",
+    "start": "node scripts/bump-sw.js && node scripts/migration-b3-unique-nome.js && node backend/src/index.js",
     "bump-sw": "node scripts/bump-sw.js",
     "postinstall": "npm install --prefix backend",
     "dev": "cd backend && npm run dev",
