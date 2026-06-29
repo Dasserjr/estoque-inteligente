@@ -20,6 +20,8 @@
   #banner-conn.online{display:block;background:#16a34a;color:#fff;}
   #banner-conn.offline{display:block;background:#dc2626;color:#fff;animation:piscar 1s ease-in-out 3;}
   @keyframes piscar{0%,100%{opacity:1;}50%{opacity:.5;}}
+  #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:12px 22px;border-radius:24px;font-size:15px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   #aviso{margin:12px;border-radius:16px;background:var(--vermelho-bg);border:2px solid var(--vermelho);padding:14px 16px;display:none;}
   #aviso.show{display:block;}
   #aviso h2{margin:0 0 6px;font-size:17px;color:var(--vermelho);}
@@ -227,6 +229,7 @@
 </header>
 
 <div id="banner-conn"></div>
+<div id="toast"></div>
 
 <div id="aviso">
   <h2>🛒 Hora de comprar (não deixe acabar):</h2>
@@ -690,8 +693,18 @@ function enviarWhats(){ const t=textoDaLista(); if(!t)return;
   window.open(base+"?text="+encodeURIComponent(t),"_blank"); }
 function enviarEmail(){ const t=textoDaLista(); if(!t)return;
   window.location.href="mailto:"+(cfg.email||"")+"?subject="+encodeURIComponent("Lista de compras")+"&body="+encodeURIComponent(t); }
+let _toastTimer = null;
+function mostrarToast(msg, dur = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+}
 function copiarLista(){ const t=textoDaLista(); if(!t)return;
-  if(navigator.clipboard) navigator.clipboard.writeText(t); alert("Lista copiada!\n\n"+t); }
+  if(navigator.clipboard){ navigator.clipboard.writeText(t).then(()=>mostrarToast('Lista copiada! ✅')); }
+  else { mostrarToast('Copie manualmente: seu navegador não suporta cópia automática.', 4000); }
+}
 
 function abrirDono(){
   document.getElementById("cfgFone").value=cfg.fone||"";
