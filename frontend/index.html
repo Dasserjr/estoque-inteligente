@@ -654,7 +654,7 @@ function listaCompras(){ return itens.filter(i=>i.situacao==="comprar"); }
 function textoDaLista(){
   const l=listaCompras().map(i=>{
     const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);
-    return `• ${i.nome_canonico}${q>1?` (${q})`:""}`;
+    return `• (${q}) ${i.nome_canonico}`;
   });
   return l.length ? "🛒 Lista de compras:\n"+l.join("\n") : null;
 }
@@ -684,7 +684,7 @@ function render(){
   const comprar=listaCompras();
   const aviso=document.getElementById("aviso"), tc=document.getElementById("tudoCerto");
   if(comprar.length){ aviso.classList.add("show"); tc.classList.remove("show");
-    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li>${esc(i.nome_canonico)}${q>1?` <b>(${q})</b>`:""}</li>`;}).join("");
+    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li><b>(${q})</b> ${esc(i.nome_canonico)}</li>`;}).join("");
   } else { aviso.classList.remove("show"); tc.classList.add("show"); }
 }
 
