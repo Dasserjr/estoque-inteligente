@@ -1216,7 +1216,6 @@ function abrirEditar(id) {
   document.getElementById('editIcone').value = p.icone || '🧴';
   document.getElementById('editNome').value = p.nome_canonico;
   document.getElementById('editCategoria').value = p.categoria || '';
-  document.getElementById('editUnidade').value = p.unidade || 'unidade';
   const { val: tv, un: tu } = _parseTamanho(p.tamanho || '');
   document.getElementById('editTamVal').value = tv;
   document.getElementById('editTamUn').value = tu;
