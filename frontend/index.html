@@ -326,12 +326,18 @@
     </div>
 
     <div class="step ativo" id="step1">
-      <p class="sub">Tire uma foto do cupom fiscal ou escolha da galeria.</p>
-      <div class="fotoArea" id="fotoArea" onclick="document.getElementById('inputFoto').click()">
-        <div id="fotoPlaceholder">📷<br><span style="font-size:14px;color:#64748b">Toque para tirar foto ou escolher arquivo</span></div>
+      <p class="sub">Fotografe o cupom fiscal ou escolha uma imagem já salva.</p>
+      <div class="fotoArea" id="fotoArea" style="cursor:default">
+        <div id="fotoPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+            <button class="fechar" style="margin:0;padding:12px 22px;font-size:15px" onclick="document.getElementById('inputCamera').click()">📷 Tirar foto</button>
+            <button class="secundario" style="margin:0;padding:12px 22px;font-size:15px" onclick="document.getElementById('inputGaleria').click()">🖼 Da galeria</button>
+          </div>
+        </div>
         <img id="fotoPreview" style="display:none" alt="preview">
       </div>
-      <input type="file" id="inputFoto" accept="image/*" capture="environment" style="display:none" onchange="onFotoSelecionada(this)">
+      <input type="file" id="inputCamera"  accept="image/*" capture="environment" style="display:none" onchange="onFotoSelecionada(this)">
+      <input type="file" id="inputGaleria" accept="image/*"                        style="display:none" onchange="onFotoSelecionada(this)">
       <button class="fechar" id="btnAnalisar" onclick="analisarFoto()" style="display:none">🔍 Analisar nota</button>
       <button class="secundario" onclick="fecharNota()">Cancelar</button>
     </div>
@@ -990,7 +996,8 @@ function abrirNota() {
   document.getElementById('fotoPreview').style.display = 'none';
   document.getElementById('fotoPlaceholder').style.display = '';
   document.getElementById('btnAnalisar').style.display = 'none';
-  document.getElementById('inputFoto').value = '';
+  document.getElementById('inputCamera').value = '';
+  document.getElementById('inputGaleria').value = '';
   irStep(1);
   document.getElementById('modalNota').classList.add('show');
 }
