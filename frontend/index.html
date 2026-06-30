@@ -1452,7 +1452,7 @@ async function salvarNovoProduto() {
       const bloco = document.getElementById('pend-'+novoProdutoCtx.compraItemId);
       if (bloco) {
         bloco.querySelectorAll('button').forEach(b => b.disabled = true);
-        bloco.insertAdjacentHTML('beforeend', `<div style="color:var(--verde);font-size:13px;margin-top:6px">✅ Cadastrado como "${nome}"</div>`);
+        bloco.insertAdjacentHTML('beforeend', `<div style="color:var(--verde);font-size:13px;margin-top:6px">✅ Cadastrado como "${nome_canonico}"</div>`);
       }
     }
     document.getElementById('modalNovoProduto').classList.remove('show');
