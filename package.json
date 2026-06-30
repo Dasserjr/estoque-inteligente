@@ -1,6 +1,6 @@
 {
   "name": "estoque-inteligente",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "private": true,
   "scripts": {
     "start": "node scripts/bump-sw.js && node scripts/migration-b3-unique-nome.js && node backend/src/index.js",

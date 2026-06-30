@@ -133,6 +133,27 @@ router.post('/confirmar', autenticar, exigirDono, async (req, res) => {
   }
 });
 
+// POST /api/compras/confirmar-lote — confirma vários itens pendentes de uma vez (mesmo produto).
+// aprender=true (padrão) só aprende apelido no primeiro item para evitar duplicatas.
+router.post('/confirmar-lote', autenticar, exigirDono, async (req, res) => {
+  const { compra_item_ids, catalogo_id, aprender = true } = req.body || {};
+  if (!Array.isArray(compra_item_ids) || !compra_item_ids.length || !catalogo_id)
+    return res.status(400).json({ erro: 'compra_item_ids (array) e catalogo_id são obrigatórios' });
+  try {
+    for (let i = 0; i < compra_item_ids.length; i++) {
+      const r = await confirmarItem(pool, {
+        compra_item_id: Number(compra_item_ids[i]),
+        catalogo_id: Number(catalogo_id),
+        aprender: aprender && i === 0,
+      });
+      if (r.erro) return res.status(400).json(r);
+    }
+    res.json({ ok: true, confirmados: compra_item_ids.length });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
 // DELETE /api/compras/item/:id — descarta item pendente; apaga a nota se ficar sem itens.
 router.delete('/item/:id', autenticar, exigirDono, async (req, res) => {
   const id = Number(req.params.id);

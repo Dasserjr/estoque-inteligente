@@ -56,7 +56,7 @@ async function casarItem(db, descricao, gtin) {
   for (const a of apes) cand.push({ id: a.catalogo_id, base: a.texto_na_nota, score: similar(alvo, a.texto_na_nota) });
   cand.sort((x, y) => y.score - x.score);
   const top = cand[0];
-  const AUTO = 0.6, SUGERE = 0.3;
+  const AUTO = 0.6, SUGERE = 0.5;
   if (top && top.score >= AUTO) {
     return { catalogo_id: top.id, confianca: 'fuzzy', score: top.score, sugestoes: [] };
   }

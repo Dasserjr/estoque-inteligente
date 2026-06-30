@@ -1082,38 +1082,91 @@ function renderResultado(dados) {
     html += '</div>';
   }
   if (dados.pendentes && dados.pendentes.length) {
-    html += `<div class="resultado-pend"><h3>❓ ${dados.pendentes.length} item(s) não reconhecido(s)</h3>`;
-    html += '<p style="font-size:13px;color:#92400e;margin:0 0 10px">Vincule ao catálogo ou ignore cada um.</p>';
+    // Agrupa itens com a mesma descrição (case-insensitive)
+    const grupos = [];
+    const keyMap = {};
     _pendCtx = {};
-    html += dados.pendentes.map(p=>{ _pendCtx[p.compra_item_id]={compraItemId:p.compra_item_id,descricaoNota:p.descricao,precoUnit:p.preco_unit}; return `
-      <div class="pend-item" id="pend-${p.compra_item_id}">
-        <div class="pend-desc">${esc(p.descricao)}</div>
-        <div class="pend-sugest">
-          ${(p.sugestoes||[]).map(s=>`<button onclick="vincularPend(${p.compra_item_id},${s.catalogo_id},this)">${esc(s.base)}</button>`).join('')}
-          <button style="border-color:#6366f1;color:#6366f1" onclick="abrirNovoProduto(_pendCtx[${p.compra_item_id}])">➕ Cadastrar novo</button>
-          <button class="ignorar" onclick="ignorarPend(${p.compra_item_id},this)">Ignorar</button>
-        </div>
-      </div>`;}).join('');
+    dados.pendentes.forEach(p => {
+      _pendCtx[p.compra_item_id] = { compraItemId: p.compra_item_id, descricaoNota: p.descricao, precoUnit: p.preco_unit };
+      const key = p.descricao.toUpperCase().trim();
+      if (keyMap[key] === undefined) {
+        keyMap[key] = grupos.length;
+        grupos.push({ descricao: p.descricao, ids: [], sugestoes: p.sugestoes || [], preco: p.preco_unit });
+      }
+      grupos[keyMap[key]].ids.push(p.compra_item_id);
+    });
+    const totalItens = dados.pendentes.length;
+    const totalGrupos = grupos.length;
+    html += `<div class="resultado-pend">`;
+    html += `<h3>❓ ${totalItens} item(s) não reconhecido(s)${totalGrupos < totalItens ? ` em ${totalGrupos} grupo(s)` : ''}</h3>`;
+    html += '<p style="font-size:13px;color:#92400e;margin:0 0 10px">Vincule ao catálogo ou ignore cada grupo.</p>';
+    html += grupos.map((g, idx) => {
+      const qtd = g.ids.length;
+      const preco = g.preco != null ? ` · R$ ${Number(g.preco).toFixed(2)} cada` : '';
+      const idsJson = JSON.stringify(g.ids);
+      const sugestBtns = g.sugestoes.map(s =>
+        `<button onclick="vincularGrupo(${idsJson},${s.catalogo_id},this,'grupo-${idx}')">${esc(s.base)}</button>`
+      ).join('');
+      return `
+        <div class="pend-item" id="pend-grupo-${idx}">
+          <div class="pend-desc">${esc(g.descricao)}${qtd > 1 ? `<span style="font-weight:normal;color:#92400e"> ×${qtd}${preco}</span>` : ''}</div>
+          <div class="pend-sugest" id="sugest-grupo-${idx}">
+            ${sugestBtns}
+            <button style="border-color:#6366f1;color:#6366f1" onclick="toggleBuscarGrupo(${idx})">🔍 Buscar</button>
+            <button style="border-color:#6366f1;color:#6366f1" onclick="abrirNovoProduto(_pendCtx[${g.ids[0]}],${idsJson},'grupo-${idx}')">➕ Cadastrar novo</button>
+            <button class="ignorar" onclick="ignorarGrupo(${idsJson},'grupo-${idx}')">Ignorar</button>
+          </div>
+          <div id="busca-grupo-${idx}" style="display:none;margin-top:8px">
+            <input type="text" placeholder="Digite o nome do produto..."
+              style="width:100%;padding:8px 10px;border:1.5px solid #6366f1;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none"
+              oninput="filtrarBusca(${idx},this.value,${idsJson})">
+            <div id="busca-res-${idx}" style="margin-top:6px"></div>
+          </div>
+        </div>`;
+    }).join('');
     html += '</div>';
   }
   if (!html) html = '<p style="color:#64748b;text-align:center">Nenhum item processado.</p>';
   document.getElementById('resultadoNota').innerHTML = html;
 }
 
-async function vincularPend(compraItemId, catalogoId, btn) {
+async function vincularGrupo(ids, catalogoId, btn, grupoId) {
   try {
-    await api('/compras/confirmar', { method:'POST', body: JSON.stringify({ compra_item_id: compraItemId, catalogo_id: catalogoId }) });
-    const bloco = document.getElementById('pend-'+compraItemId);
-    bloco.querySelectorAll('button').forEach(b => b.disabled = true);
+    await api('/compras/confirmar-lote', { method:'POST', body: JSON.stringify({ compra_item_ids: ids, catalogo_id: catalogoId }) });
+    const bloco = document.getElementById('pend-'+grupoId);
+    bloco.querySelectorAll('button, input').forEach(b => b.disabled = true);
     btn.classList.add('sel');
-  } catch(e) { alert('Erro ao vincular item.'); }
+  } catch(e) { alert('Erro ao vincular: ' + e.message); }
 }
 
-async function ignorarPend(compraItemId, btn) {
-  const bloco = document.getElementById('pend-'+compraItemId);
-  bloco.querySelectorAll('button').forEach(b => b.disabled = true);
-  btn.classList.add('sel');
-  try { await api(`/compras/item/${compraItemId}`, { method: 'DELETE' }); } catch(e) {}
+async function ignorarGrupo(ids, grupoId) {
+  const bloco = document.getElementById('pend-'+grupoId);
+  bloco.querySelectorAll('button, input').forEach(b => b.disabled = true);
+  await Promise.all(ids.map(id => api(`/compras/item/${id}`, { method: 'DELETE' }).catch(()=>{})));
+}
+
+function toggleBuscarGrupo(idx) {
+  const el = document.getElementById('busca-grupo-'+idx);
+  const abrir = el.style.display === 'none';
+  el.style.display = abrir ? 'block' : 'none';
+  if (abrir) el.querySelector('input').focus();
+}
+
+function filtrarBusca(idx, termo, ids) {
+  const cont = document.getElementById('busca-res-'+idx);
+  const t = termo.trim().toLowerCase();
+  if (!t) { cont.innerHTML = ''; return; }
+  const found = itens.filter(i => i.nome_canonico.toLowerCase().includes(t)).slice(0, 6);
+  if (!found.length) {
+    cont.innerHTML = '<div style="font-size:13px;color:#64748b;padding:4px 0">Nenhum produto encontrado.</div>';
+    return;
+  }
+  const idsJson = JSON.stringify(ids);
+  cont.innerHTML = found.map(i =>
+    `<button onclick="vincularGrupo(${idsJson},${i.id},this,'grupo-${idx}')"
+      style="display:block;width:100%;text-align:left;margin-bottom:4px;padding:8px 12px;border-radius:8px;border:1.5px solid #cbd5e1;background:#fff;font-size:14px;cursor:pointer">
+      ${esc(i.icone||'')} ${esc(i.nome_canonico)}</button>`
+  ).join('');
 }
 
 async function descartarNota() {
@@ -1362,8 +1415,8 @@ async function abrirHistorico(id, nome) {
 // ===== NOVO PRODUTO =====
 let novoProdutoCtx = null;
 
-function abrirNovoProduto(ctx) {
-  novoProdutoCtx = ctx || null;
+function abrirNovoProduto(ctx, grupoIds, grupoId) {
+  novoProdutoCtx = ctx ? { ...ctx, grupoIds: grupoIds || null, grupoId: grupoId || null } : null;
   document.getElementById('npIcone').value = '🧴';
   document.getElementById('npCategoria').value = '';
   document.getElementById('npMin').value = '1';
@@ -1449,9 +1502,15 @@ async function salvarNovoProduto() {
       await api('/compras/confirmar', { method:'POST', body: JSON.stringify({
         compra_item_id: novoProdutoCtx.compraItemId, catalogo_id: id, aprender: true
       })});
-      const bloco = document.getElementById('pend-'+novoProdutoCtx.compraItemId);
+      const remaining = (novoProdutoCtx.grupoIds || []).filter(gid => gid !== novoProdutoCtx.compraItemId);
+      if (remaining.length) {
+        await api('/compras/confirmar-lote', { method:'POST', body: JSON.stringify({
+          compra_item_ids: remaining, catalogo_id: id, aprender: false
+        })});
+      }
+      const bloco = novoProdutoCtx.grupoId ? document.getElementById('pend-'+novoProdutoCtx.grupoId) : null;
       if (bloco) {
-        bloco.querySelectorAll('button').forEach(b => b.disabled = true);
+        bloco.querySelectorAll('button, input').forEach(b => b.disabled = true);
         bloco.insertAdjacentHTML('beforeend', `<div style="color:var(--verde);font-size:13px;margin-top:6px">✅ Cadastrado como "${nome_canonico}"</div>`);
       }
     }
