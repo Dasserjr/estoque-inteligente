@@ -1,5 +1,19 @@
 # Changelog — Estoque Inteligente
 
+## v1.8.0 · 01/07/2026
+
+### Scanner — categorização por IA, emoji picker e embalagem múltipla manual
+
+- **Correção crítica**: `multiplo` (unidades por embalagem) não chegava ao formulário quando detectado pelo Haiku via Cosmos — campo `multiplo` não estava sendo retornado pela função `buscarNaBase()`
+- **Campo multiplo sempre acessível**: botão "📦 Embalagem com múltiplas unidades?" exibido abaixo da quantidade; o usuário pode ativar manualmente mesmo quando o produto não tem embalagem múltipla detectada automaticamente
+- **Categorização por IA**: rota `GET /api/escanear/lookup` consulta o Haiku com a lista real de categorias do banco e retorna `categoria_sugerida_id`; fallback para correspondência local de palavras-chave quando IA indisponível
+- **Badge "✨ Sugestão da IA"** aparece abaixo do select de categoria quando o Haiku fez a sugestão
+- **Emoji picker curado**: campo de ícone substituído por botão com grade de emojis organizada em 6 seções (Limpeza, Cozinha, Alimentos, Descartáveis, Utensílios, Outros); substitui campo de texto livre
+- **Herança de ícone por categoria**: ao selecionar ou alterar a categoria no formulário, o ícone é preenchido automaticamente com o ícone da categoria; pode ser sobrescrito pelo emoji picker
+- Haiku chamado 2× por scan com produto Cosmos: uma vez para nome canônico (max_tokens 128) e uma vez para sugestão de categoria (max_tokens 10)
+
+---
+
 ## v1.7.3 · 01/07/2026
 
 ### Scanner — embalagens múltiplas (C/5, 12UN, PCT C/12)

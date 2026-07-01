@@ -105,8 +105,8 @@ async function buscarNaBase(gtin) {
         'Content-Type': 'application/json',
       });
       if (d && d.description) {
-        const { nome, tamanho } = await gerarNomeCanonico(d.description);
-        return { nome, tamanho, fonte: 'cosmos' };
+        const { nome, tamanho, multiplo } = await gerarNomeCanonico(d.description);
+        return { nome, tamanho, multiplo, fonte: 'cosmos' };
       }
     } catch { /* continua */ }
   }
@@ -129,6 +129,25 @@ async function buscarNaBase(gtin) {
   return null;
 }
 
+// ─── Sugestão de categoria via Haiku ──────────────────────────────────────────
+
+async function sugerirCategoria(nome, categorias) {
+  if (!categorias || !categorias.length) return null;
+  try {
+    const lista = categorias.map(c => `${c.id} - ${c.nome}`).join('\n');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      messages: [{ role: 'user', content: `Produto: "${nome}"\n\nCategorias:\n${lista}\n\nResponda SOMENTE com o ID numérico da categoria mais adequada. Se nenhuma servir, responda 0.` }],
+    });
+    const id = parseInt(msg.content[0].text.trim(), 10);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Rotas ────────────────────────────────────────────────────────────────────
 
 // GET /api/escanear/lookup?gtin=XXXXX
@@ -147,7 +166,13 @@ router.get('/lookup', autenticar, exigirDono, async (req, res) => {
     if (alias.length) {
       return res.json({ encontrado: true, existente: true, produto: alias[0] });
     }
-    const externo = await buscarNaBase(gtin);
+    const [externo, { rows: cats }] = await Promise.all([
+      buscarNaBase(gtin),
+      pool.query('SELECT id, nome FROM categorias ORDER BY ordem, nome'),
+    ]);
+    if (externo) {
+      externo.categoria_sugerida_id = await sugerirCategoria(externo.nome, cats);
+    }
     res.json({ encontrado: !!externo, existente: false, externo: externo || null });
   } catch (e) {
     res.status(500).json({ erro: e.message });

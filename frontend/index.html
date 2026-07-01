@@ -623,11 +623,15 @@
       <label>Nome canônico *</label>
       <input id="esc-nome" type="text" placeholder="Ex: Lava Louças Limpol 500ml">
       <label>Categoria *</label>
-      <select id="esc-categoria" style="width:100%;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff;margin-bottom:4px"><option value="">-- Selecione --</option></select>
+      <select id="esc-categoria" onchange="_onEscCategoriaChange()" style="width:100%;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff;margin-bottom:4px"><option value="">-- Selecione --</option></select>
+      <div id="esc-ia-cat-dica" style="display:none;font-size:11px;color:#0ea5e9;margin:-2px 0 6px">✨ Sugestão da IA — confirme ou altere se necessário</div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <div>
           <label>Ícone</label>
-          <input id="esc-icone" type="text" maxlength="4" value="🧴" style="width:60px;text-align:center;font-size:20px;padding:8px">
+          <div style="position:relative">
+            <button id="esc-icone-btn" type="button" onclick="_toggleEmojiPicker()" title="Toque para escolher ícone" style="width:58px;height:46px;font-size:22px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff;cursor:pointer;line-height:1">🧴</button>
+            <div id="esc-icone-picker" style="display:none;position:absolute;top:52px;left:0;z-index:200;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;width:272px;max-height:280px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.15)"></div>
+          </div>
         </div>
         <div style="flex:1">
           <label>Tamanho</label>
@@ -648,6 +652,7 @@
       <p style="font-size:14px;font-weight:700;margin:0 0 10px;color:#334155">📦 Estoque atual</p>
       <label id="esc-qtd-label">Quantas unidades você tem agora?</label>
       <input id="esc-qtd" type="number" min="0" value="1" oninput="_atualizarTotalEsc()">
+      <button type="button" id="esc-toggle-multiplo" onclick="_toggleMultiplo()" style="background:none;border:none;color:#0ea5e9;font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline;display:block;margin-top:2px;text-align:left">📦 Embalagem com múltiplas unidades?</button>
       <div id="esc-multiplo-box" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-top:8px">
         <label style="font-size:13px;margin:0 0 6px">Unidades por embalagem</label>
         <input id="esc-multiplo" type="number" min="1" value="1" oninput="_atualizarTotalEsc()" style="margin-bottom:0">
@@ -1893,11 +1898,18 @@ function abrirFormEscanear(gtin, externo) {
   document.getElementById('esc-gtin').value = gtin || '';
   document.getElementById('esc-gtin-row').style.display = gtin ? '' : 'none';
 
+  document.getElementById('esc-ia-cat-dica').style.display = 'none';
   if (externo && externo.nome) {
     document.getElementById('esc-nome').value = externo.nome;
     document.getElementById('esc-tamanho').value = externo.tamanho || '';
-    const catId = _escSugerirCategoria(externo.nome);
+    const catId = externo.categoria_sugerida_id || _escSugerirCategoria(externo.nome);
     document.getElementById('esc-categoria').value = catId || '';
+    if (catId) {
+      if (externo.categoria_sugerida_id) {
+        document.getElementById('esc-ia-cat-dica').style.display = '';
+      }
+      _onEscCategoriaChange();
+    }
     const fonteNome = externo.fonte === 'cosmos' ? 'Cosmos Bluesoft' : 'Open Food Facts';
     document.getElementById('esc-fonte').textContent = `Dados obtidos via ${fonteNome} — confira e ajuste se necessário`;
     document.getElementById('esc-fonte').style.display = '';
@@ -1908,7 +1920,8 @@ function abrirFormEscanear(gtin, externo) {
     document.getElementById('esc-fonte').style.display = 'none';
   }
 
-  document.getElementById('esc-icone').value = '🧴';
+  document.getElementById('esc-icone-btn').textContent = '🧴';
+  document.getElementById('esc-icone-picker').style.display = 'none';
   document.getElementById('esc-min').value = '1';
   document.getElementById('esc-ideal').value = '2';
   document.getElementById('esc-qtd').value = '1';
@@ -1919,6 +1932,9 @@ function abrirFormEscanear(gtin, externo) {
   document.getElementById('esc-multiplo').value = mult;
   document.getElementById('esc-multiplo-alerta').style.display = isMultiplo ? '' : 'none';
   document.getElementById('esc-multiplo-box').style.display = isMultiplo ? '' : 'none';
+  document.getElementById('esc-toggle-multiplo').textContent = isMultiplo
+    ? '❌ Cancelar embalagem múltipla'
+    : '📦 Embalagem com múltiplas unidades?';
   document.getElementById('esc-qtd-label').textContent = isMultiplo
     ? `Quantas embalagens você comprou? (${mult} un. cada)`
     : 'Quantas unidades você tem agora?';
@@ -1960,6 +1976,60 @@ function _atualizarTotalEsc() {
     : 'Deixe em branco se não souber — pode editar depois em Meus Produtos';
 }
 
+function _toggleMultiplo() {
+  const box   = document.getElementById('esc-multiplo-box');
+  const btn   = document.getElementById('esc-toggle-multiplo');
+  const label = document.getElementById('esc-qtd-label');
+  const abre  = box.style.display === 'none';
+  box.style.display = abre ? '' : 'none';
+  btn.textContent   = abre ? '❌ Cancelar embalagem múltipla' : '📦 Embalagem com múltiplas unidades?';
+  label.textContent = abre ? 'Quantas embalagens você comprou?' : 'Quantas unidades você tem agora?';
+  if (abre) {
+    document.getElementById('esc-multiplo').value = 1;
+    _atualizarTotalEsc();
+  }
+}
+
+function _onEscCategoriaChange() {
+  const catId = Number(document.getElementById('esc-categoria').value);
+  const cat   = (categorias || []).find(c => c.id === catId);
+  if (cat && cat.icone) document.getElementById('esc-icone-btn').textContent = cat.icone;
+}
+
+const _ESC_EMOJI = [
+  { g: 'Limpeza',      e: ['🧴','🧹','🧺','🧻','🪣','🧽','🪥','🧼','🫧','🚿','🛁','🚽'] },
+  { g: 'Cozinha',      e: ['🍽️','🥘','🍳','☕','🫖','🥛','🧂','🫙','🥫','🧃','🥤','🍵'] },
+  { g: 'Alimentos',    e: ['🍎','🍋','🥦','🥕','🧅','🧄','🍞','🥚','🧈','🌽','🥜','🍬'] },
+  { g: 'Descartáveis', e: ['🛍️','🗑️','📦','🎁','🥡','🧻'] },
+  { g: 'Utensílios',   e: ['🔧','✂️','🔩','🪄','🧲','📐','🔑'] },
+  { g: 'Outros',       e: ['🌸','🌿','💧','🌊','✨','💪','🏠','🪟','⚡','🎯','🐾','🫀'] },
+];
+
+function _toggleEmojiPicker() {
+  const picker = document.getElementById('esc-icone-picker');
+  if (picker.style.display !== 'none') { picker.style.display = 'none'; return; }
+  picker.innerHTML = _ESC_EMOJI.map(gr =>
+    `<div style="margin-bottom:8px">
+      <div style="font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px">${gr.g}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px">
+        ${gr.e.map(em =>
+          `<button type="button" onclick="_selecionarEmoji('${em}')" style="font-size:20px;width:34px;height:34px;border:none;background:none;cursor:pointer;border-radius:6px" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">${em}</button>`
+        ).join('')}
+      </div>
+    </div>`
+  ).join('');
+  picker.style.display = '';
+}
+
+function _selecionarEmoji(em) {
+  document.getElementById('esc-icone-btn').textContent = em;
+  document.getElementById('esc-icone-picker').style.display = 'none';
+}
+
+function _getEscIcone() {
+  return (document.getElementById('esc-icone-btn').textContent || '').trim() || '🧴';
+}
+
 function buscarPrecoML() {
   const nome = document.getElementById('esc-nome').value.trim();
   if (!nome) { alert('Preencha o nome do produto primeiro.'); return; }
@@ -1982,7 +2052,7 @@ async function salvarProdutoEscanear() {
     gtin: document.getElementById('esc-gtin').value.trim() || null,
     nome_canonico: nome,
     categoria_id: Number(catId),
-    icone: document.getElementById('esc-icone').value.trim() || '🧴',
+    icone: _getEscIcone(),
     tamanho: document.getElementById('esc-tamanho').value.trim(),
     unidade: 'un',
     min_nivel: Math.max(0, Number(document.getElementById('esc-min').value) || 1),
