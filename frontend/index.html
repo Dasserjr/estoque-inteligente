@@ -1887,7 +1887,7 @@ function abrirFormEscanear(gtin, externo) {
 
   if (externo && externo.nome) {
     document.getElementById('esc-nome').value = externo.nome;
-    document.getElementById('esc-tamanho').value = externo.quantidade || '';
+    document.getElementById('esc-tamanho').value = externo.tamanho || '';
     const catId = _escSugerirCategoria(externo.nome);
     document.getElementById('esc-categoria').value = catId || '';
     const fonteNome = externo.fonte === 'cosmos' ? 'Cosmos Bluesoft' : 'Open Food Facts';
