@@ -1,5 +1,14 @@
 # Changelog — Estoque Inteligente
 
+## v1.8.1 · 01/07/2026
+
+### Correções de regressão no scanner (v1.8.0)
+
+- **Bug A**: ícone da categoria sugerida era imediatamente sobrescrito por `'🧴'` ao abrir o formulário — reset do padrão movido para antes do bloco `if/else`, de modo que `_onEscCategoriaChange()` tenha a última palavra
+- **Bug B**: ao cancelar embalagem múltipla (botão "❌ Cancelar"), o valor de `esc-multiplo` permanecia com o número antigo (ex: 5), fazendo `salvarProdutoEscanear()` multiplicar a quantidade indevidamente — `_toggleMultiplo()` agora sempre reseta `esc-multiplo` para 1 ao fechar o painel
+
+---
+
 ## v1.8.0 · 01/07/2026
 
 ### Scanner — categorização por IA, emoji picker e embalagem múltipla manual

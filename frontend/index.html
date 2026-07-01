@@ -1899,6 +1899,8 @@ function abrirFormEscanear(gtin, externo) {
   document.getElementById('esc-gtin-row').style.display = gtin ? '' : 'none';
 
   document.getElementById('esc-ia-cat-dica').style.display = 'none';
+  document.getElementById('esc-icone-btn').textContent = '🧴';
+  document.getElementById('esc-icone-picker').style.display = 'none';
   if (externo && externo.nome) {
     document.getElementById('esc-nome').value = externo.nome;
     document.getElementById('esc-tamanho').value = externo.tamanho || '';
@@ -1920,8 +1922,6 @@ function abrirFormEscanear(gtin, externo) {
     document.getElementById('esc-fonte').style.display = 'none';
   }
 
-  document.getElementById('esc-icone-btn').textContent = '🧴';
-  document.getElementById('esc-icone-picker').style.display = 'none';
   document.getElementById('esc-min').value = '1';
   document.getElementById('esc-ideal').value = '2';
   document.getElementById('esc-qtd').value = '1';
@@ -1984,10 +1984,8 @@ function _toggleMultiplo() {
   box.style.display = abre ? '' : 'none';
   btn.textContent   = abre ? '❌ Cancelar embalagem múltipla' : '📦 Embalagem com múltiplas unidades?';
   label.textContent = abre ? 'Quantas embalagens você comprou?' : 'Quantas unidades você tem agora?';
-  if (abre) {
-    document.getElementById('esc-multiplo').value = 1;
-    _atualizarTotalEsc();
-  }
+  document.getElementById('esc-multiplo').value = 1;
+  _atualizarTotalEsc();
 }
 
 function _onEscCategoriaChange() {
