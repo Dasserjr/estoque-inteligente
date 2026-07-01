@@ -8,7 +8,7 @@ function iniciarAgendador() {
     console.log('[cron] Enviando lembrete semanal para a Delzita...');
     try {
       await enviarParaTodos({
-        title: 'Estoque de Casa',
+        title: 'Estoque Inteligente',
         body: 'Olá Delzita! Atualizar os itens da dispensa. Abra o aplicativo e ajuste as quantidades!',
         icon: '/icon.svg',
         url: '/'

@@ -17,7 +17,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("push", (e) => {
   const data = e.data ? e.data.json() : {};
   e.waitUntil(
-    self.registration.showNotification(data.title || 'Estoque de Casa', {
+    self.registration.showNotification(data.title || 'Estoque Inteligente', {
       body: data.body || '',
       icon: data.icon || '/icon.svg',
       badge: '/icon.svg',

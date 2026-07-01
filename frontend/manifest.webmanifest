@@ -1,7 +1,7 @@
 {
-  "name": "Estoque de Casa",
+  "name": "Estoque Inteligente",
   "short_name": "Estoque",
-  "description": "Controle de estoque de consumíveis da casa",
+  "description": "Controle inteligente de estoque doméstico",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

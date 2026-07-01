@@ -66,7 +66,7 @@ async function enviarResumoSemanal() {
   const html = `<!DOCTYPE html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;background:#f8fafc;margin:0;padding:20px">
 <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <div style="background:#0ea5e9;padding:24px;color:#fff">
-    <h1 style="margin:0;font-size:22px">🏠 Estoque de Casa</h1>
+    <h1 style="margin:0;font-size:22px">🏠 Estoque Inteligente</h1>
     <p style="margin:6px 0 0;opacity:.9">Resumo semanal — ${dataHoje}</p>
   </div>
   <div style="padding:24px">
@@ -76,14 +76,14 @@ async function enviarResumoSemanal() {
     ${tabelaAtencao}
   </div>
   <div style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
-    Enviado automaticamente toda sexta-feira pelo Estoque de Casa.
+    Enviado automaticamente toda sexta-feira pelo Estoque Inteligente.
   </div>
 </div>
 </body></html>`;
 
   const resend = new Resend(apiKey);
   await resend.emails.send({
-    from: 'Estoque de Casa <onboarding@resend.dev>',
+    from: 'Estoque Inteligente <onboarding@resend.dev>',
     to: emailDono,
     subject: `📦 Resumo do estoque — ${new Date().toLocaleDateString('pt-BR')}`,
     html

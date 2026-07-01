@@ -19,7 +19,7 @@ router.post('/subscribe', autenticar, async (req, res) => {
 router.post('/testar', autenticar, async (req, res) => {
   try {
     await enviarParaTodos({
-      title: 'Estoque de Casa',
+      title: 'Estoque Inteligente',
       body: 'Olá Delzita! Atualizar os itens da dispensa. Abra o aplicativo e ajuste as quantidades!',
       icon: '/icon.svg',
       url: '/'
