@@ -9,12 +9,14 @@ router.get('/lista', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT v.id, v.nome_canonico, v.categoria, v.icone, v.estoque, v.min_nivel, v.par_level,
+        cat.nome AS categoria_nome, cat.icone AS categoria_icone,
         (SELECT ci.preco_unit FROM compra_itens ci
          WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
          ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
       FROM v_estoque v
+      LEFT JOIN categorias cat ON cat.id = v.categoria_id
       WHERE v.estoque <= v.min_nivel
-      ORDER BY v.categoria, v.nome_canonico
+      ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
     `);
     const itens = rows.map((r) => {
       const estoque = Number(r.estoque);

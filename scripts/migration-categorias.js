@@ -21,20 +21,31 @@ async function run() {
     // 2. Insere as 9 categorias padrão
     const cats = [
       ['Lava Louças',              '🍽️', 1],
-      ['Lavanderia',               '👕',  2],
-      ['Desinfetante e Alvejante', '🧪',  3],
-      ['Limpador Multiuso',        '🧹',  4],
+      ['Lavanderia',               '🧺',  2],
+      ['Desinfetante e Alvejante', '🚽',  3],
+      ['Limpador Multiuso',        '🪣',  4],
       ['Limpador Abrasivo',        '💪',  5],
       ['Limpeza Especializada',    '✨',  6],
       ['Aromatizadores',           '🌸',  7],
       ['Utensílios de Limpeza',    '🧽',  8],
-      ['Descartáveis',             '🗑️', 9],
+      ['Descartáveis',             '🛍️', 9],
     ];
     for (const [nome, icone, ordem] of cats) {
       await client.query(
         `INSERT INTO categorias (nome, icone, ordem) VALUES ($1,$2,$3) ON CONFLICT (nome) DO NOTHING`,
         [nome, icone, ordem]
       );
+    }
+
+    // 2b. Corrige ícones revisados pelo usuário (idempotente)
+    const iconesCorrigidos = [
+      ['Lavanderia',               '🧺'],
+      ['Desinfetante e Alvejante', '🚽'],
+      ['Limpador Multiuso',        '🪣'],
+      ['Descartáveis',             '🛍️'],
+    ];
+    for (const [nome, icone] of iconesCorrigidos) {
+      await client.query(`UPDATE categorias SET icone = $1 WHERE nome = $2 AND icone <> $1`, [icone, nome]);
     }
 
     // 3. Coluna categoria_id no catálogo

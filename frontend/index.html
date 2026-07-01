@@ -25,7 +25,10 @@
   #aviso{margin:12px;border-radius:16px;background:var(--vermelho-bg);border:2px solid var(--vermelho);padding:14px 16px;display:none;}
   #aviso.show{display:block;}
   #aviso h2{margin:0 0 6px;font-size:17px;color:var(--vermelho);}
-  #aviso ul{margin:6px 0 0;padding-left:22px;font-size:16px;font-weight:600;}
+  .lista-cat-header{font-size:12px;font-weight:700;color:#7c3aed;letter-spacing:.6px;margin:12px 0 4px;text-transform:uppercase;}
+  .lista-cat-header:first-child{margin-top:4px;}
+  .lista-cat-itens{margin:0 0 2px;padding-left:22px;font-size:16px;font-weight:600;list-style:disc;}
+  .preco-ref{font-size:13px;color:#64748b;font-weight:400;margin-left:6px;}
   #tudoCerto{margin:12px;border-radius:16px;background:var(--verde-bg);border:2px solid var(--verde);
     padding:14px 16px;display:none;font-size:16px;color:var(--verde);font-weight:600;text-align:center;}
   #tudoCerto.show{display:block;}
@@ -232,8 +235,8 @@
 <div id="toast"></div>
 
 <div id="aviso">
-  <h2>🛒 Hora de comprar (não deixe acabar):</h2>
-  <ul id="listaCompras"></ul>
+  <h2 id="avisoTitulo">🛒 Hora de comprar:</h2>
+  <div id="listaCompras"></div>
   <div class="envios">
     <button class="bWhats" onclick="enviarWhats()">📱 WhatsApp</button>
     <button class="bMail" onclick="enviarEmail()">✉️ E-mail</button>
@@ -582,6 +585,7 @@
 const API = "/api";
 let itens = [];
 let categorias = [];
+let listaPrecos = {}; // id → { ultimo_preco } — populado junto com carregar()
 let token = localStorage.getItem("token_v1") || "";
 let perfil = localStorage.getItem("perfil_v1") || "";
 let cfg = JSON.parse(localStorage.getItem("cfg_v1") || '{"fone":"","email":""}');
@@ -648,8 +652,12 @@ async function api(path, opts={}){
 async function carregar(){
   if(!token){ document.getElementById("login").style.display="flex"; return; }
   try{
-    const r=await api("/itens");
-    itens=await r.json();
+    const [r1, r2] = await Promise.all([
+      api("/itens"),
+      api("/compras/lista").catch(()=>null)
+    ]);
+    itens = await r1.json();
+    if(r2){ const ld=await r2.json(); listaPrecos={}; (ld.itens||[]).forEach(i=>listaPrecos[i.id]=i); }
     setConn(false); render(); flushOutbox();
   }catch(e){ if(!e.auth){ setConn(true); render(); } }
 }
@@ -677,12 +685,76 @@ async function flushOutbox(){
 window.addEventListener("online", ()=>{ flushOutbox().then(carregar); });
 
 function listaCompras(){ return itens.filter(i=>i.situacao==="comprar"); }
-function textoDaLista(){
-  const l=listaCompras().map(i=>{
-    const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);
-    return `• (${q}) ${i.nome_canonico}`;
+
+function _gruposLista() {
+  const comprar = listaCompras();
+  const grupos = new Map();
+  comprar.forEach(i => {
+    const cat = i.categoria_nome || i.categoria || 'Sem categoria';
+    const icone = i.categoria_icone || '📦';
+    if (!grupos.has(cat)) grupos.set(cat, { cat, icone, itens: [] });
+    grupos.get(cat).itens.push(i);
   });
-  return l.length ? "🛒 Lista de compras:\n"+l.join("\n") : null;
+  return grupos;
+}
+
+function _totalEstimado() {
+  return listaCompras().reduce((s, i) => {
+    const p = listaPrecos[i.id];
+    if (!p || p.ultimo_preco == null) return s;
+    const q = Math.max(1, (i.par_level || i.min_nivel + 1) - i.estoque);
+    return s + Number(p.ultimo_preco) * q;
+  }, 0);
+}
+
+function _fmt(v){ return v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function textoDaLista(){
+  const grupos = _gruposLista();
+  if (!grupos.size) return null;
+  const total = _totalEstimado();
+  const totalTxt = total > 0 ? ` (~R$ ${_fmt(total)})` : '';
+  const linhas = [`🛒 Lista de compras${totalTxt}`];
+  grupos.forEach(({ cat, icone, itens: its }) => {
+    linhas.push('');
+    linhas.push(`${icone} ${cat.toUpperCase()}`);
+    its.forEach(i => {
+      const q = Math.max(1, (i.par_level || i.min_nivel + 1) - i.estoque);
+      const p = listaPrecos[i.id];
+      const precoTxt = p && p.ultimo_preco != null ? ` — R$ ${_fmt(Number(p.ultimo_preco))}/un` : '';
+      linhas.push(`• (${q}) ${i.nome_canonico}${precoTxt}`);
+    });
+  });
+  return linhas.join('\n');
+}
+
+function renderAviso() {
+  const comprar = listaCompras();
+  const aviso = document.getElementById("aviso"), tc = document.getElementById("tudoCerto");
+  if (!comprar.length) { aviso.classList.remove("show"); tc.classList.add("show"); return; }
+  aviso.classList.add("show"); tc.classList.remove("show");
+
+  const total = _totalEstimado();
+  const semPreco = comprar.filter(i => !listaPrecos[i.id] || listaPrecos[i.id].ultimo_preco == null).length;
+  const totalTxt = total > 0 ? ` · <span style="font-weight:500;font-size:15px">~R$ ${_fmt(total)}${semPreco?' *':''}</span>` : '';
+  document.getElementById('avisoTitulo').innerHTML = `🛒 Hora de comprar:${totalTxt}`;
+
+  const grupos = _gruposLista();
+  let html = '';
+  grupos.forEach(({ cat, icone, itens: its }) => {
+    html += `<div class="lista-cat-header">${icone} ${cat}</div><ul class="lista-cat-itens">`;
+    its.forEach(i => {
+      const q = Math.max(1, (i.par_level || i.min_nivel + 1) - i.estoque);
+      const p = listaPrecos[i.id];
+      const precoTxt = p && p.ultimo_preco != null
+        ? `<span class="preco-ref">R$ ${_fmt(Number(p.ultimo_preco))}/un</span>` : '';
+      html += `<li><b>(${q})</b> ${esc(i.nome_canonico)}${precoTxt}</li>`;
+    });
+    html += '</ul>';
+  });
+  if (semPreco > 0)
+    html += `<p style="font-size:12px;color:#94a3b8;margin:8px 0 0">* estimativa parcial — ${semPreco} ${semPreco===1?'item sem':'itens sem'} preço histórico</p>`;
+  document.getElementById("listaCompras").innerHTML = html;
 }
 
 function render(){
@@ -707,11 +779,7 @@ function render(){
           <button class="btn btnMais" onclick="mov(${i.id},1)">+</button></div>`;
       lista.appendChild(card);
     });
-  const comprar=listaCompras();
-  const aviso=document.getElementById("aviso"), tc=document.getElementById("tudoCerto");
-  if(comprar.length){ aviso.classList.add("show"); tc.classList.remove("show");
-    document.getElementById("listaCompras").innerHTML=comprar.map(i=>{const q=Math.max(1,(i.par_level||i.min_nivel+1)-i.estoque);return `<li><b>(${q})</b> ${esc(i.nome_canonico)}</li>`;}).join("");
-  } else { aviso.classList.remove("show"); tc.classList.add("show"); }
+  renderAviso();
 }
 
 function enviarWhats(){ const t=textoDaLista(); if(!t)return;
