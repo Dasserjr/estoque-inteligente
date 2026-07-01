@@ -652,13 +652,16 @@ async function api(path, opts={}){
 async function carregar(){
   if(!token){ document.getElementById("login").style.display="flex"; return; }
   try{
-    const [r1, r2] = await Promise.all([
-      api("/itens"),
-      api("/compras/lista").catch(()=>null)
-    ]);
-    itens = await r1.json();
-    if(r2){ const ld=await r2.json(); listaPrecos={}; (ld.itens||[]).forEach(i=>listaPrecos[i.id]=i); }
+    const r = await api("/itens");
+    itens = await r.json();
     setConn(false); render(); flushOutbox();
+    // Preços carregados em background — não bloqueia nem afeta o render principal
+    api("/compras/lista").then(async r2 => {
+      const ld = await r2.json();
+      listaPrecos = {};
+      (ld.itens||[]).forEach(i => listaPrecos[i.id] = i);
+      renderAviso();
+    }).catch(()=>{});
   }catch(e){ if(!e.auth){ setConn(true); render(); } }
 }
 
