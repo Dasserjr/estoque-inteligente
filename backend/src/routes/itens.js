@@ -9,19 +9,37 @@ const situacao = (estoque, min) =>
 // GET /api/itens/todos — todos os produtos (ativos + inativos), com contagem de compras.
 router.get('/todos', autenticar, exigirDono, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT c.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
-        COALESCE(SUM(e.qtd), 0) AS estoque,
-        COUNT(DISTINCT ci.compra_id) AS total_compras,
-        MAX(comp.data) AS ultima_compra
-      FROM catalogo c
-      LEFT JOIN categorias cat ON cat.id = c.categoria_id
-      LEFT JOIN eventos e ON e.catalogo_id = c.id
-      LEFT JOIN compra_itens ci ON ci.catalogo_id = c.id
-      LEFT JOIN compras comp ON comp.id = ci.compra_id
-      GROUP BY c.id, cat.nome, cat.icone, cat.ordem
-      ORDER BY c.ativo DESC, COALESCE(cat.ordem, 999), c.nome_canonico
-    `);
+    let rows;
+    try {
+      const r = await pool.query(`
+        SELECT c.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
+          COALESCE(SUM(e.qtd), 0) AS estoque,
+          COUNT(DISTINCT ci.compra_id) AS total_compras,
+          MAX(comp.data) AS ultima_compra
+        FROM catalogo c
+        LEFT JOIN categorias cat ON cat.id = c.categoria_id
+        LEFT JOIN eventos e ON e.catalogo_id = c.id
+        LEFT JOIN compra_itens ci ON ci.catalogo_id = c.id
+        LEFT JOIN compras comp ON comp.id = ci.compra_id
+        GROUP BY c.id, cat.nome, cat.icone, cat.ordem
+        ORDER BY c.ativo DESC, COALESCE(cat.ordem, 999), c.nome_canonico
+      `);
+      rows = r.rows;
+    } catch {
+      const r = await pool.query(`
+        SELECT c.*,
+          COALESCE(SUM(e.qtd), 0) AS estoque,
+          COUNT(DISTINCT ci.compra_id) AS total_compras,
+          MAX(comp.data) AS ultima_compra
+        FROM catalogo c
+        LEFT JOIN eventos e ON e.catalogo_id = c.id
+        LEFT JOIN compra_itens ci ON ci.catalogo_id = c.id
+        LEFT JOIN compras comp ON comp.id = ci.compra_id
+        GROUP BY c.id
+        ORDER BY c.ativo DESC, c.nome_canonico
+      `);
+      rows = r.rows;
+    }
     res.json(rows.map(r => ({ ...r, estoque: Number(r.estoque), total_compras: Number(r.total_compras) })));
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
@@ -29,15 +47,32 @@ router.get('/todos', autenticar, exigirDono, async (req, res) => {
 // GET /api/itens — itens com estoque, situação, consumo 28d e dias de cobertura.
 router.get('/', autenticar, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT v.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
-        COALESCE((SELECT -SUM(e.qtd) FROM eventos e
-                  WHERE e.catalogo_id = v.id AND e.tipo = 'uso'
-                  AND e.data >= now() - interval '28 days'), 0) AS uso_28d
-      FROM v_estoque v
-      LEFT JOIN categorias cat ON cat.id = v.categoria_id
-      ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
-    `);
+    let rows;
+    try {
+      // Query completa com categorias (requer migration-categorias aplicada)
+      const r = await pool.query(`
+        SELECT v.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
+          COALESCE((SELECT -SUM(e.qtd) FROM eventos e
+                    WHERE e.catalogo_id = v.id AND e.tipo = 'uso'
+                    AND e.data >= now() - interval '28 days'), 0) AS uso_28d
+        FROM v_estoque v
+        LEFT JOIN catalogo c ON c.id = v.id
+        LEFT JOIN categorias cat ON cat.id = c.categoria_id
+        ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
+      `);
+      rows = r.rows;
+    } catch {
+      // Fallback: tabela categorias ou coluna categoria_id ainda não disponível
+      const r = await pool.query(`
+        SELECT v.*,
+          COALESCE((SELECT -SUM(e.qtd) FROM eventos e
+                    WHERE e.catalogo_id = v.id AND e.tipo = 'uso'
+                    AND e.data >= now() - interval '28 days'), 0) AS uso_28d
+        FROM v_estoque v
+        ORDER BY v.nome_canonico
+      `);
+      rows = r.rows;
+    }
     const itens = rows.map((r) => {
       const estoque = Number(r.estoque);
       const uso28 = Number(r.uso_28d);

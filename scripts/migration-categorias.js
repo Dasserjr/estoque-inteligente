@@ -96,13 +96,15 @@ async function run() {
     `);
 
     // 7. Sincroniza campo texto 'categoria' com o nome da categoria_id
-    await client.query(`
-      UPDATE catalogo c SET categoria = cat.nome
-      FROM categorias cat
-      WHERE c.categoria_id = cat.id AND (c.categoria IS DISTINCT FROM cat.nome)
-    `);
+    try {
+      await client.query(`
+        UPDATE catalogo c SET categoria = cat.nome
+        FROM categorias cat
+        WHERE c.categoria_id = cat.id AND (c.categoria IS DISTINCT FROM cat.nome)
+      `);
+    } catch (e) { console.warn('[migration-cat] Aviso passo 7:', e.message); }
 
-    // 8. Recria a view v_estoque incluindo categoria_id
+    // 8. Recria a view v_estoque incluindo categoria_id (sempre executa)
     await client.query(`
       CREATE OR REPLACE VIEW v_estoque AS
       SELECT c.id, c.nome_canonico, c.categoria, c.categoria_id, c.unidade, c.tamanho,
