@@ -1,5 +1,223 @@
 # Changelog — Estoque Inteligente
 
+## v1.7.3 · 01/07/2026
+
+### Scanner — embalagens múltiplas (C/5, 12UN, PCT C/12)
+
+- Haiku detecta campo `multiplo` na descrição Cosmos (ex: "C/5" → 5)
+- Formulário exibe banner laranja de atenção quando `multiplo > 1`
+- Label da quantidade muda para "Quantas embalagens você comprou? (N un. cada)"
+- Campo "Unidades por embalagem" pré-preenchido e editável
+- Preview dinâmico: "Total a registrar no estoque: X unidades"
+- Dica de preço: "Preço unitário = preço da embalagem ÷ N"
+- Tela de sucesso mostra "X un. (N emb. × M un.)"
+- `multiplo` é efêmero — derivado a cada scan, não armazenado; troca de tamanho pela indústria é captada automaticamente
+- Categoria Lavanderia ampliada para reconhecer "sabão barra" e "sabão em barra"
+
+---
+
+## v1.7.2 · 01/07/2026
+
+### Scanner — nome canônico inteligente via Claude Haiku
+
+- Haiku analisa descrição Cosmos e retorna `{nome, tamanho, multiplo}` separados
+- Remove palavras de embalagem: frasco, spray, squeeze, refil, galão, bisnaga, sachê, automático, dispenser, caixa, pacote
+- Remove descritores redundantes (ex: "líquido" para lava-louças)
+- Coloca marca no início, aplica Title Case, limita a 40 caracteres
+- Campo Tamanho do formulário populado automaticamente
+- Fallback regex + title case quando Haiku indisponível
+- Exemplo: "MUCAMBO LAVA-LOUÇAS LÍQUIDO NEUTRO YPÊ SQUEEZE 500ML" → nome: "Ypê Lava-Louças Neutro", tamanho: "500ml"
+
+---
+
+## v1.7.1 · 01/07/2026
+
+### Correção crítica: Cosmos API retornava 401
+
+- `User-Agent` trocado de `'EstoqueInteligente/1.7'` para `'Cosmos-API-Request'` (exigido pela Cosmos)
+
+---
+
+## v1.7.0 · 01/07/2026
+
+### Fase A — Cadastro por escaneamento de código de barras
+
+- Botão 📷 Escanear no rodapé (visível apenas para o dono)
+- Modal com 5 etapas: entrada → câmera → buscando → formulário → resultado
+- ZXing @0.19.2 carregado lazily de `/lib/zxing.min.js` (285 KB, sem CDN, respeita CSP)
+- Backend `GET /api/escanear/lookup`: verifica apelidos/GTIN → Cosmos Bluesoft → Open Food Facts
+- Backend `POST /api/escanear/cadastrar`: transação atômica (catalogo + apelidos + evento)
+- Evento tipo `'compra'` com `compra_itens` se preço informado; tipo `'ajuste'` se sem preço
+- GTIN salvo em `apelidos.gtin`; `COSMOS_API_KEY` opcional
+- Correção de gap pré-existente: `carregarCategorias()` adicionado ao bloco de auto-login
+
+---
+
+## v1.6.5 · Junho/2026
+
+### Rename para Estoque Inteligente
+
+- App renomeado em todos os arquivos: `manifest.json`, títulos HTML, e-mails e push
+
+---
+
+## v1.6.4 · Junho/2026
+
+- Fix: nota de estimativa parcial incluída no texto copiado/compartilhado da lista de compras
+
+---
+
+## v1.6.3 · Junho/2026
+
+- Fix: `GET /api/compras/lista` não quebrava se tabela `categorias` ainda não existisse
+
+---
+
+## v1.6.2 · Junho/2026
+
+- Fix: itens carregados antes dos preços de referência; `compras/lista` em background para evitar tela em branco
+
+---
+
+## v1.6.1 · Junho/2026
+
+- Fix: `GET /api/itens` com fallback se tabela `categorias` não existir; migration mais robusta
+
+---
+
+## v1.6.0 · Junho/2026
+
+### Lista de compras agrupada por categoria com preço de referência
+
+- Lista agrupada por categoria (antes: lista plana)
+- Preço unitário de referência (última compra) ao lado de cada item
+- Estimativa de custo total no rodapé
+
+---
+
+## v1.5.9 · Junho/2026
+
+### Sistema de categorias
+
+- Tabela `categorias` com categorias pré-definidas de limpeza
+- FK `categoria_id` em `catalogo`; coluna `categoria` (texto) mantida para compatibilidade
+- CRUD: `GET /api/categorias`, `POST`, `PUT`, `DELETE`
+- Dropdowns de categoria no frontend em todos os formulários
+
+---
+
+## v1.5.8 · Junho/2026
+
+- Separa botões "Tirar foto" e "Da galeria" na tela de nota fiscal
+
+---
+
+## v1.5.7 · Junho/2026
+
+- Itens repetidos na nota agrupados automaticamente (soma de quantidade)
+- Casamento fuzzy com threshold 0,5 (mais tolerante a abreviações)
+
+---
+
+## v1.5.6 · Junho/2026
+
+- Fix: `ReferenceError 'nome is not defined'` ao cadastrar produto pela nota fiscal
+
+---
+
+## v1.5.5 · Junho/2026
+
+- Quantidade sugerida exibida à frente de todos os itens na lista de compras
+
+---
+
+## v1.5.4 · Junho/2026
+
+- Auditoria A3: `scriptSrcAttr: ["'unsafe-inline'"]` restaura `onclick=` bloqueado pelo Helmet/CSP
+
+---
+
+## v1.5.3 · Junho/2026
+
+- Auditoria A3: CSP reativada no Helmet com diretivas ajustadas
+
+---
+
+## v1.5.2 · Junho/2026
+
+- Auditoria C3: `copiarLista()` usa toast visual em vez de `alert()`
+
+---
+
+## v1.5.1 · Junho/2026
+
+- Auditoria C1: Modo Dono salva em paralelo e exibe feedback visual com spinner
+
+---
+
+## v1.5.0 · Junho/2026
+
+### Auditoria B3 — nome canônico único
+
+- `UNIQUE INDEX` em `catalogo.nome_canonico` via migration idempotente no startup
+- `POST` e `PUT /api/itens` bloqueiam duplicata, retornam 409; frontend trata com mensagem clara
+
+---
+
+## v1.4.9 · Junho/2026
+
+- Botão Inativar direto no card em Meus Produtos (sem precisar abrir modal)
+
+---
+
+## v1.4.8 · Junho/2026
+
+- Fix: botão Editar em Meus Produtos não abria o modal de edição
+
+---
+
+## v1.4.7 · Junho/2026
+
+- 5 correções de segurança da auditoria (validação de entrada, rate limiting no login, sanitização de outputs)
+
+---
+
+## v1.4.6 · Junho/2026
+
+- Descarte de notas fiscais em andamento; limpeza de itens pendentes órfãos
+
+---
+
+## v1.4.5 · Junho/2026
+
+- Fix: `GET /api/compras/gastos/mensal` incluía corretamente itens de compras não confirmadas
+
+---
+
+## v1.4.4 · Junho/2026
+
+- `min_nivel = 0` permitido para produtos esporádicos; premissa "produto aberto não conta" documentada
+
+---
+
+## v1.4.3 · Junho/2026
+
+- Fix: lista de compras exibe quantidade sugerida corretamente por produto
+
+---
+
+## v1.4.2 · Junho/2026
+
+- Fix: botão "Adicionar produto" no Modo Dono abria formulário errado
+
+---
+
+## v1.4.1 · Junho/2026
+
+- Bump de versão e ajustes menores pós-v1.4.0
+
+---
+
 ## versão 1.4.0 · 23/06/2026
 
 ### Relatórios — redesign acordeão

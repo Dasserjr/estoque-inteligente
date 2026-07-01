@@ -88,8 +88,9 @@ Regra de situação (manter igual no front e back): `estoque <= min_nivel` → c
 ## Variáveis de ambiente obrigatórias
 Ver `backend/.env` (local) e painel Railway (produção):
 - `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `SENHA_DONO`, `SENHA_EMPREGADA`, `PORT`, `NODE_ENV`
-- `ANTHROPIC_API_KEY` — chave da API Claude para leitura de fotos (Claude Haiku)
+- `ANTHROPIC_API_KEY` — chave da API Claude para leitura de fotos e geração de nome canônico (Claude Haiku)
 - `AI_PROVIDER` — provedor de IA (`claude`; extensível)
+- `COSMOS_API_KEY` — chave da API Cosmos Bluesoft para lookup de GTIN no scanner (opcional; sem ela usa Open Food Facts)
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` — push notifications
 - `RESEND_API_KEY` — e-mail semanal via Resend
 - `EMAIL_DONO` — endereço do dono para resumo semanal
@@ -112,6 +113,23 @@ Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abrevia
 - **📦 Meus Produtos** — lista de ativos e inativos, edição completa, histórico por produto, toggle de IA
 - **💰 Gastos** — gasto por categoria com seletor de período (30d/3m/12m) e gráfico anual Jan–Dez
 - **📊 Relatórios** — dados na tela em acordeão: 4 seções colapsáveis (Estoque, Movimentações, Compras, Gastos), filtro por coluna em tempo real, botão imprimir via `window.print()` sem biblioteca externa
+- **📷 Escanear** — cadastro por código de barras (Fase A); ver seção específica abaixo
+
+## Scanner de código de barras — Fase A (v1.7.x)
+
+### Rotas
+- `GET /api/escanear/lookup?gtin=XXX` (autenticar + exigirDono) — verifica apelidos/GTIN no banco → Cosmos Bluesoft → Open Food Facts; retorna `{ encontrado, existente, produto | externo }`
+- `POST /api/escanear/cadastrar` (autenticar + exigirDono) — transação: `catalogo` + `apelidos` (gtin, fonte='escanear') + evento (`'compra'` com `compra_itens` se preço; `'ajuste'` se sem preço)
+
+### Arquivos
+- `backend/src/routes/escanear.js` — lógica completa de lookup e cadastro
+- `frontend/lib/zxing.min.js` — ZXing @0.19.2 (285 KB), carregado lazily ao abrir o modal
+
+### Decisões de arquitetura
+- **Nome canônico via Haiku**: a descrição Cosmos é enviada ao `claude-haiku-4-5-20251001` com prompt few-shot; retorna `{nome, tamanho, multiplo}`. Fallback: regex + title case se Haiku indisponível.
+- **`multiplo` é efêmero**: quantidade de unidades por embalagem (C/5, 12UN etc.) é extraída a cada escaneamento pelo Haiku e usada apenas no formulário para multiplicar a quantidade. **Não é armazenada no catálogo.** Troca de capacidade de embalagem pela indústria é captada automaticamente no próximo scan.
+- **Cosmos API**: exige `User-Agent: 'Cosmos-API-Request'` (string exata) e `X-Cosmos-Token`. Sem `COSMOS_API_KEY`, usa Open Food Facts como único lookup.
+- **GTIN em apelidos**: `apelidos.gtin` (índice não-único), `texto_na_nota` recebe o nome canônico (satisfaz NOT NULL), `fonte = 'escanear'`.
 
 ## Roadmap e status das fases
 
@@ -124,12 +142,16 @@ Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abrevia
 | Fase 3.2 | ❌ Fora do escopo | ROP dinâmico (alerta por consumo × lead_time) |
 | Fase 3.4 | ❌ Fora do escopo | Alerta diário de ruptura por push/e-mail |
 | Relatórios | ✅ Completa | Acordeão on-screen com filtros e impressão (v1.4.0) |
+| Fase A scanner | ✅ Completa | Cadastro por código de barras — Cosmos/OFF + Haiku + embalagens múltiplas (v1.7.x) |
+| Fase B scanner | ⏳ Pendente | Preço via API Mercado Livre (hoje abre browser) |
+| Fase C scanner | ⏳ Pendente | GTIN já cadastrado → tela de entrada de estoque direta |
 
 ### Pendentes / evolutivas (sem prazo)
 - Exportação Excel — removida do escopo em v1.4.0; infraestrutura de rotas `/api/exportar` já existe
 - Adaptador NFC-e por QR code (alternativa à foto para entrada de nota)
 - Gasto por produto (detalhar dentro da tela de Gastos)
 - ROP dinâmico e alerta diário — infraestrutura pronta (`lead_time_dias`, `dias_cobertura`), lógica não implementada por decisão do dono
+- D3 — verificação de domínio no Resend (ação externa de DNS, fora do código)
 
 ## Reaproveitamento (panorama-patrimonio)
 Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, criar rota
