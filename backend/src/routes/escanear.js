@@ -25,7 +25,8 @@ async function buscarNaBase(gtin) {
     try {
       const d = await httpGetJSON(`https://api.cosmos.bluesoft.com.br/gtins/${gtin}.json`, {
         'X-Cosmos-Token': cosmosKey,
-        'User-Agent': 'EstoqueInteligente/1.7',
+        'User-Agent': 'Cosmos-API-Request',
+        'Content-Type': 'application/json',
       });
       if (d && d.description) {
         const marca = d.brand && d.brand.name ? d.brand.name + ' ' : '';
