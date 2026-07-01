@@ -7,17 +7,35 @@ const { processarNota, confirmarItem, itensDaFoto } = require('../modulo-compras
 // GET /api/compras/lista — itens no ponto de reposição, com qtd sugerida e custo estimado.
 router.get('/lista', autenticar, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT v.id, v.nome_canonico, v.categoria, v.icone, v.estoque, v.min_nivel, v.par_level,
-        cat.nome AS categoria_nome, cat.icone AS categoria_icone,
-        (SELECT ci.preco_unit FROM compra_itens ci
-         WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
-         ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
-      FROM v_estoque v
-      LEFT JOIN categorias cat ON cat.id = v.categoria_id
-      WHERE v.estoque <= v.min_nivel
-      ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
-    `);
+    let rows;
+    try {
+      // Query completa com categorias (requer migration-categorias aplicada)
+      const r = await pool.query(`
+        SELECT v.id, v.nome_canonico, v.categoria, v.icone, v.estoque, v.min_nivel, v.par_level,
+          cat.nome AS categoria_nome, cat.icone AS categoria_icone,
+          (SELECT ci.preco_unit FROM compra_itens ci
+           WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
+           ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
+        FROM v_estoque v
+        LEFT JOIN catalogo c ON c.id = v.id
+        LEFT JOIN categorias cat ON cat.id = c.categoria_id
+        WHERE v.estoque <= v.min_nivel
+        ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
+      `);
+      rows = r.rows;
+    } catch {
+      // Fallback: tabela categorias ou coluna categoria_id ainda não disponível
+      const r = await pool.query(`
+        SELECT v.id, v.nome_canonico, v.categoria, v.icone, v.estoque, v.min_nivel, v.par_level,
+          (SELECT ci.preco_unit FROM compra_itens ci
+           WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
+           ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
+        FROM v_estoque v
+        WHERE v.estoque <= v.min_nivel
+        ORDER BY v.categoria, v.nome_canonico
+      `);
+      rows = r.rows;
+    }
     const itens = rows.map((r) => {
       const estoque = Number(r.estoque);
       const sugerida = Math.max(1, (r.par_level || r.min_nivel + 1) - estoque);
