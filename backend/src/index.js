@@ -43,6 +43,7 @@ app.use('/api/compras', require('./routes/compras'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api/exportar', require('./routes/exportar'));
+app.use('/api/escanear', require('./routes/escanear'));
 const _pkg = require('../../package.json');
 app.get('/api/versao', (req, res) => res.json({ versao: _pkg.version }));
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));

@@ -254,6 +254,7 @@
   <button id="btnProdutos" onclick="abrirMeusProdutos()" style="display:none"><span>📦</span>Produtos</button>
   <button id="btnGastos" onclick="abrirGastos()" style="display:none"><span>💰</span>Gastos</button>
   <button id="btnRelatorios" onclick="abrirRelatorios()" style="display:none"><span>📊</span>Relatórios</button>
+  <button id="btnEscanear" onclick="abrirEscanear()" style="display:none"><span>📷</span>Escanear</button>
   <button onclick="carregar()"><span>🔄</span>Atualizar</button>
   <button onclick="abrirAjuda()"><span>❓</span>Ajuda</button>
   <button onclick="sair()"><span>🚪</span>Sair</button>
@@ -581,6 +582,84 @@
   </div>
 </div>
 
+<!-- ===== ESCANEAR PRODUTO (Fase A) ===== -->
+<div class="modal-full" id="modalEscanear">
+  <div class="mf-header">
+    <button onclick="fecharEscanear()">←</button>
+    <h2>📷 Escanear Produto</h2>
+  </div>
+
+  <!-- Step 0: Entrada -->
+  <div id="esc-s0" class="mf-corpo" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;gap:14px;text-align:center">
+    <div style="font-size:64px">🏷️</div>
+    <p style="font-size:17px;font-weight:700;color:#334155;margin:0">Como deseja cadastrar?</p>
+    <p style="font-size:13px;color:#64748b;margin:0">Escaneie o código de barras ou preencha manualmente</p>
+    <button class="fechar" style="margin:0;width:85%;max-width:320px" onclick="iniciarScan()">📷 Escanear código de barras</button>
+    <button class="secundario" style="margin:0;width:85%;max-width:320px" onclick="abrirFormEscanear(null,null)">✍️ Sem código de barras</button>
+  </div>
+
+  <!-- Step 1: Câmera -->
+  <div id="esc-s1" style="display:none">
+    <video id="esc-video" playsinline style="width:100%;max-height:60vh;object-fit:cover;background:#000;display:block"></video>
+    <div style="text-align:center;padding:20px 16px">
+      <p style="color:#64748b;margin:0 0 16px;font-size:14px">📍 Aponte a câmera para o código de barras do produto</p>
+      <button class="secundario" style="margin:0;display:inline-block;width:auto;padding:12px 32px" onclick="mostrarStepEsc(0)">✕ Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Buscando -->
+  <div id="esc-s2" style="display:none" class="mf-corpo">
+    <div class="carregando"><div class="spinner"></div><br>Buscando produto...</div>
+  </div>
+
+  <!-- Step 3: Formulário -->
+  <div id="esc-s3" style="display:none" class="mf-corpo">
+    <div id="esc-fonte" style="display:none;font-size:12px;color:#64748b;background:#f1f5f9;border-radius:8px;padding:8px 12px;margin-bottom:12px"></div>
+    <div class="cfgBox">
+      <div id="esc-gtin-row">
+        <label>Código de barras (GTIN)</label>
+        <input id="esc-gtin" type="text" readonly style="background:#f8fafc;color:#64748b;font-size:13px">
+      </div>
+      <label>Nome canônico *</label>
+      <input id="esc-nome" type="text" placeholder="Ex: Lava Louças Limpol 500ml">
+      <label>Categoria *</label>
+      <select id="esc-categoria" style="width:100%;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff;margin-bottom:4px"><option value="">-- Selecione --</option></select>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <div>
+          <label>Ícone</label>
+          <input id="esc-icone" type="text" maxlength="4" value="🧴" style="width:60px;text-align:center;font-size:20px;padding:8px">
+        </div>
+        <div style="flex:1">
+          <label>Tamanho</label>
+          <input id="esc-tamanho" type="text" placeholder="Ex: 500ml, 1kg">
+        </div>
+      </div>
+    </div>
+    <div class="cfgBox">
+      <label>Mínimo (0 = repõe só quando abrir o último)</label>
+      <input id="esc-min" type="number" min="0" value="1">
+      <label>Nível ideal</label>
+      <input id="esc-ideal" type="number" min="1" value="2">
+    </div>
+    <div class="cfgBox">
+      <p style="font-size:14px;font-weight:700;margin:0 0 10px;color:#334155">📦 Estoque atual</p>
+      <label>Quantas unidades você tem agora?</label>
+      <input id="esc-qtd" type="number" min="0" value="1">
+      <label>Preço unitário pago (R$)</label>
+      <div style="display:flex;gap:8px">
+        <input id="esc-preco" type="number" min="0" step="0.01" placeholder="0,00" style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px">
+        <button onclick="buscarPrecoML()" style="padding:10px 14px;border:1.5px solid #ff7300;color:#ff7300;background:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none">🔍 ML</button>
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin:4px 0 0">Deixe em branco se não souber — pode editar depois em Meus Produtos</p>
+    </div>
+    <button class="fechar" onclick="salvarProdutoEscanear()">✅ Cadastrar produto</button>
+    <button class="secundario" onclick="mostrarStepEsc(0)">← Voltar</button>
+  </div>
+
+  <!-- Step 4: Resultado (success ou existente) — preenchido via JS -->
+  <div id="esc-s4" style="display:none"></div>
+</div>
+
 <script>
 const API = "/api";
 let itens = [];
@@ -625,6 +704,7 @@ async function entrar(){
     document.getElementById("btnProdutos").style.display = isDono ? "" : "none";
     document.getElementById("btnGastos").style.display = isDono ? "" : "none";
     document.getElementById("btnRelatorios").style.display = isDono ? "" : "none";
+    document.getElementById("btnEscanear").style.display = isDono ? "" : "none";
     carregar();
     if(isDono) carregarConfig();
     carregarCategorias();
@@ -1528,7 +1608,7 @@ async function carregarCategorias() {
 function _popularSelects() {
   const opts = '<option value="">-- Selecione --</option>' +
     categorias.map(c => `<option value="${c.id}">${c.icone} ${esc(c.nome)}</option>`).join('');
-  ['npCategoria','editCategoria'].forEach(id => {
+  ['npCategoria','editCategoria','esc-categoria'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = opts;
   });
 }
@@ -1701,6 +1781,204 @@ async function salvarNovoProduto() {
   } catch(e) { alert('Erro ao cadastrar: ' + e.message); }
 }
 
+// ===== ESCANEAR PRODUTO (Fase A) =====
+let escGtin = null;
+let escCodeReader = null;
+
+function abrirEscanear() {
+  escGtin = null;
+  document.getElementById('modalEscanear').classList.add('show');
+  mostrarStepEsc(0);
+}
+
+function fecharEscanear() {
+  pararScan();
+  document.getElementById('modalEscanear').classList.remove('show');
+  carregar();
+}
+
+function mostrarStepEsc(n) {
+  for (let i = 0; i <= 4; i++) {
+    const el = document.getElementById('esc-s' + i);
+    if (el) el.style.display = (i === n) ? '' : 'none';
+  }
+  if (n !== 1) pararScan();
+}
+
+let _zxingPromise = null;
+function _carregarZXing() {
+  if (window.ZXing) return Promise.resolve();
+  if (_zxingPromise) return _zxingPromise;
+  _zxingPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/lib/zxing.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Falha ao carregar scanner'));
+    document.head.appendChild(s);
+  });
+  return _zxingPromise;
+}
+
+async function iniciarScan() {
+  mostrarStepEsc(1);
+  try {
+    await _carregarZXing();
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.ITF,
+    ]);
+    escCodeReader = new ZXing.BrowserMultiFormatReader(hints);
+    await escCodeReader.decodeFromVideoDevice(undefined, 'esc-video', (result) => {
+      if (result) {
+        pararScan();
+        escGtin = result.getText();
+        buscarProdutoEscanear(escGtin);
+      }
+    });
+  } catch(e) {
+    mostrarStepEsc(0);
+    alert('Câmera indisponível: ' + (e.message || e));
+  }
+}
+
+function pararScan() {
+  if (escCodeReader) {
+    try { escCodeReader.reset(); } catch {}
+    escCodeReader = null;
+  }
+}
+
+async function buscarProdutoEscanear(gtin) {
+  mostrarStepEsc(2);
+  try {
+    const r = await api('/escanear/lookup?gtin=' + encodeURIComponent(gtin));
+    const dados = await r.json();
+    if (dados.existente) {
+      _escMostrarExistente(dados.produto);
+    } else {
+      abrirFormEscanear(gtin, dados.externo);
+    }
+  } catch(e) {
+    if (!e.auth) abrirFormEscanear(gtin, null);
+  }
+}
+
+function _escMostrarExistente(produto) {
+  document.getElementById('esc-s4').innerHTML = `
+    <div style="text-align:center;padding:32px 16px">
+      <div style="font-size:54px">ℹ️</div>
+      <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--azul)">Produto já cadastrado</p>
+      <p style="font-size:15px;color:#64748b;margin:0 0 8px">"${esc(produto.nome_canonico)}"</p>
+      <p style="font-size:13px;color:#94a3b8;margin:0 0 28px">Use Meus Produtos para ajustar o estoque deste item.</p>
+      <button class="fechar" style="margin:0 0 12px" onclick="mostrarStepEsc(0)">📷 Escanear outro</button>
+      <button class="secundario" style="margin:0" onclick="fecharEscanear()">Fechar</button>
+    </div>`;
+  mostrarStepEsc(4);
+}
+
+function abrirFormEscanear(gtin, externo) {
+  document.getElementById('esc-gtin').value = gtin || '';
+  document.getElementById('esc-gtin-row').style.display = gtin ? '' : 'none';
+
+  if (externo && externo.nome) {
+    document.getElementById('esc-nome').value = externo.nome;
+    document.getElementById('esc-tamanho').value = externo.quantidade || '';
+    const catId = _escSugerirCategoria(externo.nome);
+    document.getElementById('esc-categoria').value = catId || '';
+    const fonteNome = externo.fonte === 'cosmos' ? 'Cosmos Bluesoft' : 'Open Food Facts';
+    document.getElementById('esc-fonte').textContent = `Dados obtidos via ${fonteNome} — confira e ajuste se necessário`;
+    document.getElementById('esc-fonte').style.display = '';
+  } else {
+    document.getElementById('esc-nome').value = '';
+    document.getElementById('esc-tamanho').value = '';
+    document.getElementById('esc-categoria').value = '';
+    document.getElementById('esc-fonte').style.display = 'none';
+  }
+
+  document.getElementById('esc-icone').value = '🧴';
+  document.getElementById('esc-min').value = '1';
+  document.getElementById('esc-ideal').value = '2';
+  document.getElementById('esc-qtd').value = '1';
+  document.getElementById('esc-preco').value = '';
+  mostrarStepEsc(3);
+}
+
+function _escSugerirCategoria(texto) {
+  const n = (texto || '').toLowerCase();
+  const mapa = [
+    [['lava lou','limpol','louça','loucas','dish wash'],'Lava Louças'],
+    [['lava roup','sabão em pó','sabao em po','amaciante','fabric softener','laundry'],'Lavanderia'],
+    [['desinfetan','alvejante','sanitár','sanitari','lysoform','cloro','bleach'],'Desinfetante e Alvejante'],
+    [['ajax','sapoleo','sapóleo','sapol','abrasiv','vim','bom bril'],'Limpador Abrasivo'],
+    [['vidrex','limpa vidro','glass clean'],'Limpeza Especializada'],
+    [['bom ar','neutre','aromatiz','ambientad','air fresh'],'Aromatizadores'],
+    [['esponja','pano de','vassoura','rodo','balde','luva de'],'Utensílios de Limpeza'],
+    [['papel higien','sacola','saco de lixo','guardanapo','fralda','copo descart'],'Descartáveis'],
+    [['multiuso','veja','ypê','ype','limpa chão','limpa tudo','pinho'],'Limpador Multiuso'],
+  ];
+  for (const [keys, catNome] of mapa) {
+    if (keys.some(k => n.includes(k))) {
+      const cat = categorias.find(c => c.nome === catNome);
+      return cat ? cat.id : null;
+    }
+  }
+  return null;
+}
+
+function buscarPrecoML() {
+  const nome = document.getElementById('esc-nome').value.trim();
+  if (!nome) { alert('Preencha o nome do produto primeiro.'); return; }
+  window.open('https://lista.mercadolivre.com.br/' + encodeURIComponent(nome), '_blank');
+}
+
+async function salvarProdutoEscanear() {
+  const nome = document.getElementById('esc-nome').value.trim();
+  if (!nome) { alert('Nome do produto é obrigatório.'); return; }
+  const catId = document.getElementById('esc-categoria').value;
+  if (!catId) { alert('Selecione uma categoria.'); return; }
+
+  const qtd = Math.max(0, Number(document.getElementById('esc-qtd').value) || 0);
+  const precoStr = document.getElementById('esc-preco').value.trim().replace(',','.');
+  const preco = precoStr ? Number(precoStr) : null;
+
+  const body = {
+    gtin: document.getElementById('esc-gtin').value.trim() || null,
+    nome_canonico: nome,
+    categoria_id: Number(catId),
+    icone: document.getElementById('esc-icone').value.trim() || '🧴',
+    tamanho: document.getElementById('esc-tamanho').value.trim(),
+    unidade: 'un',
+    min_nivel: Math.max(0, Number(document.getElementById('esc-min').value) || 1),
+    par_level: Math.max(1, Number(document.getElementById('esc-ideal').value) || 2),
+    quantidade: qtd,
+    preco_unit: preco,
+  };
+
+  try {
+    await api('/escanear/cadastrar', { method:'POST', body: JSON.stringify(body) });
+    const precoTxt = preco ? ` · R$ ${_fmt(preco)}/un` : '';
+    const estoqueTxt = qtd > 0 ? `Estoque inicial: ${qtd} un.${precoTxt}` : 'Sem estoque inicial registrado';
+    document.getElementById('esc-s4').innerHTML = `
+      <div style="text-align:center;padding:32px 16px">
+        <div style="font-size:64px">✅</div>
+        <p style="font-size:20px;font-weight:700;margin:12px 0 4px;color:var(--verde)">Produto cadastrado!</p>
+        <p style="font-size:15px;color:#334155;margin:0 0 4px">${esc(nome)}</p>
+        <p style="font-size:13px;color:#94a3b8;margin:0 0 28px">${estoqueTxt}</p>
+        <button class="fechar" style="margin:0 0 12px" onclick="mostrarStepEsc(0)">📷 Cadastrar outro</button>
+        <button class="secundario" style="margin:0" onclick="fecharEscanear()">Fechar</button>
+      </div>`;
+    mostrarStepEsc(4);
+    carregar();
+  } catch(e) {
+    alert('Erro ao cadastrar: ' + e.message);
+  }
+}
+
 fetch('/api/versao').then(r=>r.json()).then(d=>{
   const txt = `versão ${d.versao}`;
   document.getElementById('versaoLogin').textContent = txt;
@@ -1741,8 +2019,10 @@ if(token){
   document.getElementById("btnProdutos").style.display = _isDono ? "" : "none";
   document.getElementById("btnGastos").style.display = _isDono ? "" : "none";
   document.getElementById("btnRelatorios").style.display = _isDono ? "" : "none";
+  document.getElementById("btnEscanear").style.display = _isDono ? "" : "none";
   carregar();
   if(_isDono) carregarConfig();
+  carregarCategorias();
 }
 </script>
 </body>
