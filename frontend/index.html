@@ -718,6 +718,7 @@ function textoDaLista(){
   const total = _totalEstimado();
   const totalTxt = total > 0 ? ` (~R$ ${_fmt(total)})` : '';
   const linhas = [`🛒 Lista de compras${totalTxt}`];
+  let semPreco = 0;
   grupos.forEach(({ cat, icone, itens: its }) => {
     linhas.push('');
     linhas.push(`${icone} ${cat.toUpperCase()}`);
@@ -725,9 +726,12 @@ function textoDaLista(){
       const q = Math.max(1, (i.par_level || i.min_nivel + 1) - i.estoque);
       const p = listaPrecos[i.id];
       const precoTxt = p && p.ultimo_preco != null ? ` — R$ ${_fmt(Number(p.ultimo_preco))}/un` : '';
+      if (!precoTxt) semPreco++;
       linhas.push(`• (${q}) ${i.nome_canonico}${precoTxt}`);
     });
   });
+  if (semPreco > 0)
+    linhas.push(`\n* estimativa parcial — ${semPreco} ${semPreco===1?'item sem':'itens sem'} preço histórico`);
   return linhas.join('\n');
 }
 
