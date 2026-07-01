@@ -1,5 +1,17 @@
 # Estoque Inteligente — guia para o agente de código
 
+## LEITURA OBRIGATÓRIA AO INICIAR QUALQUER SESSÃO
+
+Antes de qualquer outra ação, leia integralmente:
+1. `docs/DIRETRIZES_UNIVERSAIS_CLAUDE_CODE_v3.0.md`
+2. Este arquivo (`CLAUDE.md`)
+3. O apêndice do projeto, se existir (`docs/APENDICE_ESTOQUE.md`)
+
+Após a leitura, confirme ao Dasser com a frase exata:
+**"Diretrizes universais lidas. CLAUDE.md lido. Pronto para a tarefa. Apresento o plano?"**
+
+Não prossiga sem emitir essa confirmação.
+
 ## O que é
 Controle de estoque doméstico de consumíveis em geral (hoje produtos de limpeza, mas o
 modelo é agnóstico: cozinha, açúcar, cera de sapato...). Dois usuários:
