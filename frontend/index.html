@@ -380,8 +380,26 @@
   <div class="mf-header">
     <button onclick="document.getElementById('modalMeusProdutos').classList.remove('show')">←</button>
     <h2>📦 Meus Produtos</h2>
+    <button onclick="abrirCategorias()" style="margin-left:auto;padding:6px 12px;border:1.5px solid #6366f1;color:#6366f1;background:#fff;border-radius:8px;font-size:13px;cursor:pointer">🏷️ Categorias</button>
   </div>
   <div class="mf-corpo" id="listaMeusProdutos"></div>
+</div>
+
+<!-- ===== MODAL CATEGORIAS ===== -->
+<div class="modal" id="modalCategorias">
+  <div class="folha">
+    <h2>🏷️ Categorias</h2>
+    <div id="listaCategorias"></div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0">
+      <p style="font-size:14px;font-weight:600;margin:0 0 8px">Nova categoria</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="novaCategIcone" type="text" maxlength="4" value="📦" style="width:52px;text-align:center;padding:8px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:20px">
+        <input id="novaCategNome" type="text" placeholder="Nome da categoria" style="flex:1;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px">
+      </div>
+      <button class="fechar" onclick="salvarNovaCategoria()" style="width:100%;margin:0">➕ Adicionar categoria</button>
+    </div>
+    <button class="secundario" style="margin-top:8px;width:100%" onclick="document.getElementById('modalCategorias').classList.remove('show')">Fechar</button>
+  </div>
 </div>
 
 <!-- ===== GASTOS POR CATEGORIA (tela cheia) ===== -->
@@ -480,7 +498,7 @@
       <label>Nome *</label>
       <input id="editNome" type="text" placeholder="Ex: Bom Ar, Detergente...">
       <label>Categoria</label>
-      <input id="editCategoria" type="text" placeholder="Ex: Limpeza, Cozinha">
+      <select id="editCategoria" style="width:100%;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff"><option value="">-- Selecione --</option></select>
       <label>Medida / Tamanho</label>
       <div style="display:flex;gap:8px">
         <input id="editTamVal" type="number" min="0" placeholder="Ex: 500" style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px">
@@ -545,7 +563,7 @@
       </div>
       <div id="npNomeFinal" style="font-size:13px;color:#6366f1;font-weight:600;margin-top:4px;min-height:18px"></div>
       <label>Categoria</label>
-      <input id="npCategoria" type="text" placeholder="Ex: Limpeza, Cozinha, Higiene">
+      <select id="npCategoria" style="width:100%;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff"><option value="">-- Selecione --</option></select>
     </div>
     <div class="cfgBox">
       <label>Mínimo * (0 = repõe só quando abrir o último)</label>
@@ -563,6 +581,7 @@
 <script>
 const API = "/api";
 let itens = [];
+let categorias = [];
 let token = localStorage.getItem("token_v1") || "";
 let perfil = localStorage.getItem("perfil_v1") || "";
 let cfg = JSON.parse(localStorage.getItem("cfg_v1") || '{"fone":"","email":""}');
@@ -604,6 +623,7 @@ async function entrar(){
     document.getElementById("btnRelatorios").style.display = isDono ? "" : "none";
     carregar();
     if(isDono) carregarConfig();
+    carregarCategorias();
     subscribeNotificacoes();
   }catch(e){ err.textContent="Erro de conexão."; }
 }
@@ -674,7 +694,7 @@ function render(){
     .forEach(i=>{
       const txt=i.situacao==="comprar"?"Comprar":(i.situacao==="atencao"?"Atenção":"Ok");
       const diasTxt=i.dias_cobertura?`acaba em ~${i.dias_cobertura} dias`:'';
-      const uso=[esc(i.categoria),diasTxt].filter(Boolean).join(' · ');
+      const uso=[esc(i.categoria_nome||i.categoria),diasTxt].filter(Boolean).join(' · ');
       const ultimoTag=i.estoque===1&&i.min_nivel===0?`<span style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:4px;font-weight:700">último</span>`:'';
       const card=document.createElement("div"); card.className="card "+i.situacao;
       card.innerHTML=`<div class="icone">${esc(i.icone||"🧴")}</div>
@@ -1268,7 +1288,7 @@ function renderMeusProdutos() {
 
 function renderCardProd(p) {
   const nc = Number(p.total_compras);
-  const inf = [esc(p.categoria), esc(p.unidade)].filter(Boolean).join(' · ');
+  const inf = [esc(p.categoria_nome||p.categoria), esc(p.unidade)].filter(Boolean).join(' · ');
   const compras = nc > 0 ? `${nc} compra${nc>1?'s':''}` : 'Sem compras';
   const ult = p.ultima_compra ? ` · última ${new Date(p.ultima_compra).toLocaleDateString('pt-BR')}` : '';
   if (p.ativo) {
@@ -1305,7 +1325,7 @@ function abrirEditar(id) {
   document.getElementById('editId').value = id;
   document.getElementById('editIcone').value = p.icone || '🧴';
   document.getElementById('editNome').value = p.nome_canonico;
-  document.getElementById('editCategoria').value = p.categoria || '';
+  document.getElementById('editCategoria').value = p.categoria_id || '';
   const { val: tv, un: tu } = _parseTamanho(p.tamanho || '');
   document.getElementById('editTamVal').value = tv;
   document.getElementById('editTamUn').value = tu;
@@ -1326,10 +1346,11 @@ async function salvarProduto() {
   const id = +document.getElementById('editId').value;
   const nome = document.getElementById('editNome').value.trim();
   if (!nome) { alert('Nome é obrigatório.'); return; }
+  const catId = document.getElementById('editCategoria').value;
   const body = {
     icone: document.getElementById('editIcone').value.trim() || '🧴',
     nome_canonico: nome,
-    categoria: document.getElementById('editCategoria').value.trim(),
+    categoria_id: catId ? Number(catId) : null,
     tamanho: _composeTam(document.getElementById('editTamVal').value.trim(), document.getElementById('editTamUn').value),
     setor: document.getElementById('editSetor').value.trim(),
     min_nivel: Math.max(0, +document.getElementById('editMin').value),
@@ -1419,6 +1440,83 @@ async function abrirHistorico(id, nome) {
   }
 }
 
+// ===== CATEGORIAS =====
+async function carregarCategorias() {
+  try {
+    const r = await api('/categorias');
+    categorias = await r.json();
+    _popularSelects();
+    if (document.getElementById('listaCategorias')) renderCategorias();
+  } catch(e) { console.warn('Categorias indisponíveis:', e.message); }
+}
+
+function _popularSelects() {
+  const opts = '<option value="">-- Selecione --</option>' +
+    categorias.map(c => `<option value="${c.id}">${c.icone} ${esc(c.nome)}</option>`).join('');
+  ['npCategoria','editCategoria'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = opts;
+  });
+}
+
+async function abrirCategorias() {
+  await carregarCategorias();
+  document.getElementById('modalCategorias').classList.add('show');
+}
+
+function renderCategorias() {
+  const cont = document.getElementById('listaCategorias'); if (!cont) return;
+  if (!categorias.length) { cont.innerHTML = '<p style="color:#64748b;font-size:14px;text-align:center">Nenhuma categoria.</p>'; return; }
+  cont.innerHTML = categorias.map(c => `
+    <div id="cat-row-${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+      <span style="font-size:22px;min-width:32px;text-align:center">${c.icone}</span>
+      <span style="flex:1;font-size:15px;font-weight:500">${esc(c.nome)}</span>
+      <button onclick="editarCategoria(${c.id})" style="padding:6px 10px;border:1.5px solid #6366f1;color:#6366f1;background:#fff;border-radius:8px;font-size:13px;cursor:pointer">✏️</button>
+      <button onclick="excluirCategoria(${c.id})" style="padding:6px 10px;border:1.5px solid #ef4444;color:#ef4444;background:#fff;border-radius:8px;font-size:13px;cursor:pointer">🗑️</button>
+    </div>`).join('');
+}
+
+function editarCategoria(id) {
+  const c = categorias.find(x => x.id === id); if (!c) return;
+  const row = document.getElementById('cat-row-'+id);
+  row.innerHTML = `
+    <input value="${esc(c.icone)}" maxlength="4" style="width:48px;text-align:center;padding:6px;border:1.5px solid #6366f1;border-radius:8px;font-size:20px">
+    <input value="${esc(c.nome)}" style="flex:1;padding:6px 10px;border:1.5px solid #6366f1;border-radius:8px;font-size:14px">
+    <button onclick="salvarEdicaoCategoria(${id})" style="padding:6px 10px;border:1.5px solid var(--verde);color:var(--verde);background:#fff;border-radius:8px;font-size:13px;cursor:pointer">✅</button>
+    <button onclick="renderCategorias()" style="padding:6px 10px;border:1.5px solid #94a3b8;color:#94a3b8;background:#fff;border-radius:8px;font-size:13px;cursor:pointer">✕</button>`;
+}
+
+async function salvarEdicaoCategoria(id) {
+  const row = document.getElementById('cat-row-'+id);
+  const [inpIcone, inpNome] = row.querySelectorAll('input');
+  const icone = inpIcone.value.trim() || '📦';
+  const nome = inpNome.value.trim();
+  if (!nome) { alert('Nome é obrigatório.'); return; }
+  try {
+    await api(`/categorias/${id}`, { method:'PUT', body: JSON.stringify({ nome, icone }) });
+    await carregarCategorias();
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
+}
+
+async function salvarNovaCategoria() {
+  const icone = document.getElementById('novaCategIcone').value.trim() || '📦';
+  const nome = document.getElementById('novaCategNome').value.trim();
+  if (!nome) { alert('Nome é obrigatório.'); return; }
+  try {
+    await api('/categorias', { method:'POST', body: JSON.stringify({ nome, icone }) });
+    document.getElementById('novaCategNome').value = '';
+    document.getElementById('novaCategIcone').value = '📦';
+    await carregarCategorias();
+  } catch(e) { alert('Erro ao criar: ' + e.message); }
+}
+
+async function excluirCategoria(id) {
+  if (!confirm('Excluir esta categoria? Só é possível se não houver produtos vinculados.')) return;
+  try {
+    await api(`/categorias/${id}`, { method:'DELETE' });
+    await carregarCategorias();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
 // ===== NOVO PRODUTO =====
 let novoProdutoCtx = null;
 
@@ -1494,10 +1592,11 @@ async function salvarNovoProduto() {
   const tamUn = document.getElementById('npTamUn').value;
   const tamanho = _composeTam(tamVal, tamUn);
   const nome_canonico = _composeNomeFinal(nomeBase, tamVal, tamUn);
+  const catId = document.getElementById('npCategoria').value;
   const body = {
     icone: document.getElementById('npIcone').value.trim() || '🧴',
     nome_canonico,
-    categoria: document.getElementById('npCategoria').value.trim(),
+    categoria_id: catId ? Number(catId) : null,
     tamanho,
     min_nivel: Math.max(0, +document.getElementById('npMin').value),
     par_level: +document.getElementById('npIdeal').value || 2,

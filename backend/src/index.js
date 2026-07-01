@@ -38,6 +38,7 @@ const loginLimiter = rateLimit({
 app.use('/api/login', loginLimiter);
 app.use('/api', require('./routes/auth'));          // POST /api/login
 app.use('/api/itens', require('./routes/itens'));
+app.use('/api/categorias', require('./routes/categorias'));
 app.use('/api/compras', require('./routes/compras'));
 app.use('/api/push', require('./routes/push'));
 app.use('/api/config', require('./routes/config'));

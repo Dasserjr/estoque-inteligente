@@ -10,16 +10,17 @@ const situacao = (estoque, min) =>
 router.get('/todos', autenticar, exigirDono, async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT c.*,
+      SELECT c.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
         COALESCE(SUM(e.qtd), 0) AS estoque,
         COUNT(DISTINCT ci.compra_id) AS total_compras,
         MAX(comp.data) AS ultima_compra
       FROM catalogo c
+      LEFT JOIN categorias cat ON cat.id = c.categoria_id
       LEFT JOIN eventos e ON e.catalogo_id = c.id
       LEFT JOIN compra_itens ci ON ci.catalogo_id = c.id
       LEFT JOIN compras comp ON comp.id = ci.compra_id
-      GROUP BY c.id
-      ORDER BY c.ativo DESC, c.nome_canonico
+      GROUP BY c.id, cat.nome, cat.icone, cat.ordem
+      ORDER BY c.ativo DESC, COALESCE(cat.ordem, 999), c.nome_canonico
     `);
     res.json(rows.map(r => ({ ...r, estoque: Number(r.estoque), total_compras: Number(r.total_compras) })));
   } catch (e) { res.status(500).json({ erro: e.message }); }
@@ -29,12 +30,13 @@ router.get('/todos', autenticar, exigirDono, async (req, res) => {
 router.get('/', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT v.*,
+      SELECT v.*, cat.nome AS categoria_nome, cat.icone AS categoria_icone,
         COALESCE((SELECT -SUM(e.qtd) FROM eventos e
                   WHERE e.catalogo_id = v.id AND e.tipo = 'uso'
                   AND e.data >= now() - interval '28 days'), 0) AS uso_28d
       FROM v_estoque v
-      ORDER BY v.nome_canonico
+      LEFT JOIN categorias cat ON cat.id = v.categoria_id
+      ORDER BY COALESCE(cat.ordem, 999), v.nome_canonico
     `);
     const itens = rows.map((r) => {
       const estoque = Number(r.estoque);
@@ -87,10 +89,15 @@ router.post('/', autenticar, exigirDono, async (req, res) => {
     );
     if (dup.length)
       return res.status(409).json({ erro: `Já existe um produto com este nome: "${dup[0].nome_canonico}". Se for tamanho diferente, inclua a medida no nome (ex: "Sabão Barra 90g" e "Sabão Barra 200g").` });
+    let categoriaTexto = b.categoria || null;
+    if (b.categoria_id) {
+      const { rows: cr } = await pool.query('SELECT nome FROM categorias WHERE id = $1', [b.categoria_id]);
+      if (cr[0]) categoriaTexto = cr[0].nome;
+    }
     const { rows } = await pool.query(
-      `INSERT INTO catalogo (nome_canonico, categoria, unidade, tamanho, par_level, min_nivel, icone)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [b.nome_canonico, b.categoria || null, b.unidade || 'un', b.tamanho || '',
+      `INSERT INTO catalogo (nome_canonico, categoria, categoria_id, unidade, tamanho, par_level, min_nivel, icone)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [b.nome_canonico, categoriaTexto, b.categoria_id || null, b.unidade || 'un', b.tamanho || '',
        b.par_level ?? 1, b.min_nivel ?? 1, b.icone || '🧴']
     );
     const id = rows[0].id;
@@ -110,7 +117,7 @@ router.post('/', autenticar, exigirDono, async (req, res) => {
 router.put('/:id', autenticar, exigirDono, async (req, res) => {
   const id = Number(req.params.id);
   const b = req.body || {};
-  const campos = ['nome_canonico','categoria','unidade','tamanho','par_level','min_nivel','lead_time_dias','setor','icone','ativo'];
+  const campos = ['nome_canonico','categoria','categoria_id','unidade','tamanho','par_level','min_nivel','lead_time_dias','setor','icone','ativo'];
   const sets = [], vals = [];
   let i = 1;
   for (const k of campos) if (k in b) { sets.push(`${k} = $${i++}`); vals.push(b[k]); }
@@ -122,6 +129,11 @@ router.put('/:id', autenticar, exigirDono, async (req, res) => {
     );
     if (dup.length)
       return res.status(409).json({ erro: `Já existe um produto com este nome: "${b.nome_canonico}".` });
+  }
+  // Quando categoria_id é enviado, sincroniza o campo texto categoria
+  if ('categoria_id' in b && b.categoria_id) {
+    const { rows: cr } = await pool.query('SELECT nome FROM categorias WHERE id = $1', [b.categoria_id]);
+    if (cr[0] && !('categoria' in b)) { sets.push(`categoria = $${i++}`); vals.push(cr[0].nome); }
   }
   vals.push(id);
   try {
