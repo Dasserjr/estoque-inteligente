@@ -641,16 +641,24 @@
       <label>Nível ideal</label>
       <input id="esc-ideal" type="number" min="1" value="2">
     </div>
+    <div id="esc-multiplo-alerta" style="display:none;background:#fff7ed;border:1.5px solid #fb923c;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#c2410c">
+      <strong>⚠️ ATENÇÃO</strong> — Esta embalagem contém múltiplas unidades. Confira a quantidade por embalagem abaixo antes de cadastrar.
+    </div>
     <div class="cfgBox">
       <p style="font-size:14px;font-weight:700;margin:0 0 10px;color:#334155">📦 Estoque atual</p>
-      <label>Quantas unidades você tem agora?</label>
-      <input id="esc-qtd" type="number" min="0" value="1">
-      <label>Preço unitário pago (R$)</label>
+      <label id="esc-qtd-label">Quantas unidades você tem agora?</label>
+      <input id="esc-qtd" type="number" min="0" value="1" oninput="_atualizarTotalEsc()">
+      <div id="esc-multiplo-box" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-top:8px">
+        <label style="font-size:13px;margin:0 0 6px">Unidades por embalagem</label>
+        <input id="esc-multiplo" type="number" min="1" value="1" oninput="_atualizarTotalEsc()" style="margin-bottom:0">
+        <p id="esc-total-preview" style="font-size:13px;font-weight:700;color:#0f766e;margin:8px 0 0"></p>
+      </div>
+      <label style="margin-top:12px">Preço unitário pago (R$)</label>
       <div style="display:flex;gap:8px">
         <input id="esc-preco" type="number" min="0" step="0.01" placeholder="0,00" style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px">
         <button onclick="buscarPrecoML()" style="padding:10px 14px;border:1.5px solid #ff7300;color:#ff7300;background:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none">🔍 ML</button>
       </div>
-      <p style="font-size:11px;color:#94a3b8;margin:4px 0 0">Deixe em branco se não souber — pode editar depois em Meus Produtos</p>
+      <p id="esc-preco-dica" style="font-size:11px;color:#94a3b8;margin:4px 0 0">Deixe em branco se não souber — pode editar depois em Meus Produtos</p>
     </div>
     <button class="fechar" onclick="salvarProdutoEscanear()">✅ Cadastrar produto</button>
     <button class="secundario" onclick="mostrarStepEsc(0)">← Voltar</button>
@@ -1905,6 +1913,17 @@ function abrirFormEscanear(gtin, externo) {
   document.getElementById('esc-ideal').value = '2';
   document.getElementById('esc-qtd').value = '1';
   document.getElementById('esc-preco').value = '';
+
+  const mult = (externo && externo.multiplo > 1) ? externo.multiplo : 1;
+  const isMultiplo = mult > 1;
+  document.getElementById('esc-multiplo').value = mult;
+  document.getElementById('esc-multiplo-alerta').style.display = isMultiplo ? '' : 'none';
+  document.getElementById('esc-multiplo-box').style.display = isMultiplo ? '' : 'none';
+  document.getElementById('esc-qtd-label').textContent = isMultiplo
+    ? `Quantas embalagens você comprou? (${mult} un. cada)`
+    : 'Quantas unidades você tem agora?';
+  if (isMultiplo) _atualizarTotalEsc();
+
   mostrarStepEsc(3);
 }
 
@@ -1912,7 +1931,7 @@ function _escSugerirCategoria(texto) {
   const n = (texto || '').toLowerCase();
   const mapa = [
     [['lava lou','limpol','louça','loucas','dish wash'],'Lava Louças'],
-    [['lava roup','sabão em pó','sabao em po','amaciante','fabric softener','laundry'],'Lavanderia'],
+    [['lava roup','sabão em pó','sabao em po','sabão bar','sabao bar','sabão em bar','amaciante','fabric softener','laundry'],'Lavanderia'],
     [['desinfetan','alvejante','sanitár','sanitari','lysoform','cloro','bleach'],'Desinfetante e Alvejante'],
     [['ajax','sapoleo','sapóleo','sapol','abrasiv','vim','bom bril'],'Limpador Abrasivo'],
     [['vidrex','limpa vidro','glass clean'],'Limpeza Especializada'],
@@ -1930,6 +1949,17 @@ function _escSugerirCategoria(texto) {
   return null;
 }
 
+function _atualizarTotalEsc() {
+  const qtd = Math.max(0, Number(document.getElementById('esc-qtd').value) || 0);
+  const mult = Math.max(1, Number(document.getElementById('esc-multiplo').value) || 1);
+  const total = qtd * mult;
+  document.getElementById('esc-total-preview').textContent =
+    `Total a registrar no estoque: ${total} unidade${total !== 1 ? 's' : ''}`;
+  document.getElementById('esc-preco-dica').textContent = mult > 1
+    ? `Preço unitário = preço da embalagem ÷ ${mult}. Deixe em branco se não souber.`
+    : 'Deixe em branco se não souber — pode editar depois em Meus Produtos';
+}
+
 function buscarPrecoML() {
   const nome = document.getElementById('esc-nome').value.trim();
   if (!nome) { alert('Preencha o nome do produto primeiro.'); return; }
@@ -1942,7 +1972,9 @@ async function salvarProdutoEscanear() {
   const catId = document.getElementById('esc-categoria').value;
   if (!catId) { alert('Selecione uma categoria.'); return; }
 
-  const qtd = Math.max(0, Number(document.getElementById('esc-qtd').value) || 0);
+  const pacotes = Math.max(0, Number(document.getElementById('esc-qtd').value) || 0);
+  const mult = Math.max(1, Number(document.getElementById('esc-multiplo').value) || 1);
+  const qtd = pacotes * mult;
   const precoStr = document.getElementById('esc-preco').value.trim().replace(',','.');
   const preco = precoStr ? Number(precoStr) : null;
 
@@ -1962,7 +1994,8 @@ async function salvarProdutoEscanear() {
   try {
     await api('/escanear/cadastrar', { method:'POST', body: JSON.stringify(body) });
     const precoTxt = preco ? ` · R$ ${_fmt(preco)}/un` : '';
-    const estoqueTxt = qtd > 0 ? `Estoque inicial: ${qtd} un.${precoTxt}` : 'Sem estoque inicial registrado';
+    const multTxt = mult > 1 ? ` (${pacotes} emb. × ${mult} un.)` : '';
+    const estoqueTxt = qtd > 0 ? `Estoque inicial: ${qtd} un.${multTxt}${precoTxt}` : 'Sem estoque inicial registrado';
     document.getElementById('esc-s4').innerHTML = `
       <div style="text-align:center;padding:32px 16px">
         <div style="font-size:64px">✅</div>

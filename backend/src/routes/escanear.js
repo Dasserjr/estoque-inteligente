@@ -23,26 +23,30 @@ function httpGetJSON(url, headers = {}) {
 
 // ─── Geração de nome canônico via Haiku ───────────────────────────────────────
 
-const PROMPT_NOME = `Analise o nome do produto brasileiro abaixo (como aparece na embalagem) e retorne um JSON com nome canônico e tamanho separados.
+const PROMPT_NOME = `Analise o nome do produto brasileiro abaixo (como aparece na embalagem) e retorne um JSON com nome canônico, tamanho e multiplicador separados.
 
 Regras para o nome canônico:
 - Inclua: marca principal, tipo do produto, variante essencial (neutro, concentrado, perfume/aroma quando relevante)
 - Exclua: tipo de embalagem (frasco, spray, refil, galão, squeeze, bisnaga, sachê, dispenser, bomba, automático, caixa, pacote)
-- Exclua: descritores óbvios para o tipo (ex: "líquido" para detergente, "em pó" para sabão em pó)
+- Exclua: descritores óbvios para o tipo (ex: "líquido" para detergente)
+- Exclua: quantidade de unidades por embalagem (C/5, 5UN, fardo c/12, PCT 3X, etc.)
 - Coloque a marca no início quando identificável
 - Use Title Case
 - Máximo 40 caracteres
 
-Tamanho: extraia o volume/peso no formato compacto (ex: 500ml, 1kg, 300g, 1L, 90g). Se não houver, retorne "".
+Tamanho: volume/peso de CADA UNIDADE no formato compacto (ex: 500ml, 1kg, 300g, 1L, 90g). Se não houver, retorne "".
 
-Retorne SOMENTE JSON válido, sem texto adicional: {"nome": "...", "tamanho": "..."}
+Multiplo: número inteiro de unidades individuais dentro da embalagem vendida. Exemplos: "C/5"=5, "5UN"=5, "PCT C/12"=12, "FARDO C/24"=24, "3X500ML"=3. Se produto unitário ou não especificado, retorne 1.
+
+Retorne SOMENTE JSON válido, sem texto adicional: {"nome": "...", "tamanho": "...", "multiplo": 1}
 
 Exemplos:
-"DETERGENTE NEUTRO LIMPOL FRASCO 500ML" → {"nome": "Limpol Detergente Neutro", "tamanho": "500ml"}
-"DESODORIZADOR BOM AR SPRAY AUTOMÁTICO LAVANDA 360ML" → {"nome": "Bom Ar Desodorizador Lavanda", "tamanho": "360ml"}
-"MUCAMBO LAVA-LOUÇAS LÍQUIDO NEUTRO YPÊ SQUEEZE 500ML" → {"nome": "Ypê Lava-Louças Neutro", "tamanho": "500ml"}
-"SABÃO EM BARRA COALA 200G" → {"nome": "Coala Sabão Barra", "tamanho": "200g"}
-"AMACIANTE COMFORT CONCENTRADO BRISA DE VERÃO REFIL 1L" → {"nome": "Comfort Amaciante Brisa de Verão", "tamanho": "1L"}
+"DETERGENTE NEUTRO LIMPOL FRASCO 500ML" → {"nome": "Limpol Detergente Neutro", "tamanho": "500ml", "multiplo": 1}
+"SABÃO BARRA COALA C/5 90G" → {"nome": "Coala Sabão Barra", "tamanho": "90g", "multiplo": 5}
+"PAPEL HIGIÊNICO NEVE PCT C/16 30M" → {"nome": "Neve Papel Higiênico", "tamanho": "30m", "multiplo": 16}
+"DESODORIZADOR BOM AR SPRAY AUTOMÁTICO LAVANDA 360ML" → {"nome": "Bom Ar Desodorizador Lavanda", "tamanho": "360ml", "multiplo": 1}
+"AMACIANTE COMFORT CONCENTRADO BRISA DE VERÃO REFIL 1L" → {"nome": "Comfort Amaciante Brisa de Verão", "tamanho": "1L", "multiplo": 1}
+"ESPONJA SCOTCH BRITE LIMPEZA PESADA C/3" → {"nome": "Scotch-Brite Esponja Limpeza Pesada", "tamanho": "", "multiplo": 3}
 
 Produto: {descricao}`;
 
@@ -58,7 +62,11 @@ async function gerarNomeCanonico(descricao) {
     const m = texto.match(/\{[\s\S]*?\}/);
     if (m) {
       const parsed = JSON.parse(m[0]);
-      if (parsed.nome) return { nome: parsed.nome.trim(), tamanho: (parsed.tamanho || '').trim() };
+      if (parsed.nome) return {
+        nome: parsed.nome.trim(),
+        tamanho: (parsed.tamanho || '').trim(),
+        multiplo: Math.max(1, Math.round(Number(parsed.multiplo) || 1)),
+      };
     }
   } catch (e) {
     console.warn('[escanear] Haiku indisponível, usando fallback:', e.message);
@@ -81,7 +89,7 @@ function gerarNomeBasico(descricao) {
       .replace(/\s+/g, ' ').trim();
   }
   const nome = base.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
-  return { nome, tamanho };
+  return { nome, tamanho, multiplo: 1 };
 }
 
 // ─── Lookup em bases externas ─────────────────────────────────────────────────
