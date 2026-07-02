@@ -800,11 +800,13 @@ async function mov(id, delta){
 async function flushOutbox(){
   if(!outbox.length||!token) return;
   const pend=[...outbox]; outbox=[]; salvarOutbox();
+  const falhas=[];
   for(const m of pend){
     try{ await api(`/itens/${m.id}/mov`,{method:"POST",body:JSON.stringify({delta:m.delta})}); }
-    catch(e){ outbox.push(m); }
+    catch(e){ falhas.push(m); outbox.push(m); }
   }
   salvarOutbox();
+  if(falhas.length) mostrarToast(`⚠️ ${falhas.length} movimentação(ões) offline não sincronizada(s)`,4000);
 }
 window.addEventListener("online", ()=>{ flushOutbox().then(carregar); });
 

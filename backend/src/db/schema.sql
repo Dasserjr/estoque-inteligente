@@ -3,10 +3,18 @@
 -- (No panorama-patrimonio estas tabelas entrariam com prefixo estoque_; aqui o
 --  banco é dedicado, então usamos nomes simples.)
 
+CREATE TABLE IF NOT EXISTS categorias (
+  id    SERIAL PRIMARY KEY,
+  nome  VARCHAR(100) NOT NULL UNIQUE,
+  icone VARCHAR(10)  NOT NULL DEFAULT '📦',
+  ordem INTEGER      NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS catalogo (
   id             SERIAL PRIMARY KEY,
   nome_canonico  TEXT    NOT NULL,
   categoria      TEXT,
+  categoria_id   INTEGER REFERENCES categorias(id),
   unidade        TEXT,
   tamanho        TEXT,
   par_level      INTEGER NOT NULL DEFAULT 0,    -- nível ideal/máximo a manter
@@ -77,13 +85,14 @@ CREATE TABLE IF NOT EXISTS config (
 INSERT INTO config (chave, valor) VALUES ('ia_ativa', 'true') ON CONFLICT DO NOTHING;
 
 -- View: estoque atual por produto (soma do ledger).
+-- Versão com categoria_id (pós migration-categorias).
 CREATE OR REPLACE VIEW v_estoque AS
 SELECT
-  c.id, c.nome_canonico, c.categoria, c.unidade, c.tamanho,
+  c.id, c.nome_canonico, c.categoria, c.categoria_id, c.unidade, c.tamanho,
   c.par_level, c.min_nivel, c.lead_time_dias, c.icone, c.ativo,
   COALESCE(SUM(e.qtd), 0) AS estoque
 FROM catalogo c
 LEFT JOIN eventos e ON e.catalogo_id = c.id
 WHERE c.ativo = true
-GROUP BY c.id, c.nome_canonico, c.categoria, c.unidade, c.tamanho,
+GROUP BY c.id, c.nome_canonico, c.categoria, c.categoria_id, c.unidade, c.tamanho,
          c.par_level, c.min_nivel, c.lead_time_dias, c.icone, c.ativo;

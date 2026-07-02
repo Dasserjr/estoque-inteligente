@@ -89,6 +89,19 @@ async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) 
           `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'sistema',$3)`,
           [m.catalogo_id, it.qtd ?? 1, compra_id]
         );
+        // N-4: aprende alias apenas para matches fuzzy de alta confiança (≥0.8)
+        if (m.confianca === 'fuzzy' && m.score >= 0.8 && it.descricao) {
+          const { rows: ae } = await client.query(
+            `SELECT 1 FROM apelidos WHERE catalogo_id=$1 AND LOWER(texto_na_nota)=LOWER($2) LIMIT 1`,
+            [m.catalogo_id, it.descricao]
+          );
+          if (!ae.length) {
+            await client.query(
+              `INSERT INTO apelidos (catalogo_id, texto_na_nota, fonte) VALUES ($1,$2,'auto')`,
+              [m.catalogo_id, it.descricao]
+            );
+          }
+        }
         aplicados.push({ ...it, catalogo_id: m.catalogo_id, via: m.confianca, score: m.score });
       } else {
         const { rows: ci } = await client.query(
