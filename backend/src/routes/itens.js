@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const pool = require('../db');
 const { autenticar, exigirDono } = require('../middleware/auth');
+const { registrarEntrada } = require('../db/movimentar');
 
 const situacao = (estoque, min) =>
   estoque <= min ? 'comprar' : (estoque <= min + 1 ? 'atencao' : 'ok');
@@ -91,14 +92,24 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
-// POST /api/itens/:id/mov  { delta, quem } — registra evento (coração do app).
+// POST /api/itens/:id/mov  { delta, quem, preco_unit?, mercado? } — registra evento.
+// Se delta > 0 e preco_unit fornecido, cria compras + compra_itens (visível em Gastos).
 router.post('/:id/mov', autenticar, async (req, res) => {
   const id = Number(req.params.id);
   const delta = Number(req.body && req.body.delta);
   if (!id || !delta) return res.status(400).json({ erro: 'delta inválido' });
-  const tipo = delta < 0 ? 'uso' : 'compra';
   const quem = (req.body && req.body.quem) || req.usuario.perfil || 'empregada';
   try {
+    if (delta > 0 && req.body.preco_unit) {
+      const r = await registrarEntrada({
+        catalogo_id: id, qtd: delta,
+        preco_unit: Number(req.body.preco_unit),
+        mercado: req.body.mercado || null,
+        quem,
+      });
+      return res.json({ id, estoque: r.estoque, situacao: r.situacao });
+    }
+    const tipo = delta < 0 ? 'uso' : 'compra';
     await pool.query(
       `INSERT INTO eventos (catalogo_id, tipo, qtd, quem) VALUES ($1,$2,$3,$4)`,
       [id, tipo, delta, quem]

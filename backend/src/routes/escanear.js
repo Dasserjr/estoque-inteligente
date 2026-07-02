@@ -3,6 +3,7 @@ const pool = require('../db');
 const { autenticar, exigirDono } = require('../middleware/auth');
 const https = require('https');
 const Anthropic = require('@anthropic-ai/sdk');
+const { registrarEntrada } = require('../db/movimentar');
 
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
 
@@ -264,6 +265,37 @@ router.post('/cadastrar', autenticar, exigirDono, async (req, res) => {
     res.status(500).json({ erro: e.message });
   } finally {
     client.release();
+  }
+});
+
+// POST /api/escanear/entrada — (S-1) entrada rápida de produto já cadastrado.
+router.post('/entrada', autenticar, exigirDono, async (req, res) => {
+  const { catalogo_id, qtd, preco_unit, mercado } = req.body || {};
+  if (!catalogo_id || !qtd || Number(qtd) <= 0)
+    return res.status(400).json({ erro: 'catalogo_id e qtd obrigatórios' });
+  try {
+    const r = await registrarEntrada({
+      catalogo_id: Number(catalogo_id),
+      qtd: Number(qtd),
+      preco_unit: preco_unit ? Number(preco_unit) : null,
+      mercado: mercado || null,
+      quem: 'dono',
+    });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// POST /api/escanear/canonico — (N-2) gera nome canônico via Haiku para uma descrição.
+router.post('/canonico', autenticar, exigirDono, async (req, res) => {
+  const { descricao } = req.body || {};
+  if (!descricao) return res.status(400).json({ erro: 'descricao obrigatória' });
+  try {
+    const r = await gerarNomeCanonico(descricao);
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
   }
 });
 

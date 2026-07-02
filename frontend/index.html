@@ -576,9 +576,37 @@
       <label>Nível ideal (quanto manter em casa)</label>
       <input id="npIdeal" type="number" min="1" value="2">
     </div>
+    <div class="cfgBox">
+      <label>Estoque atual (unidades em casa agora)</label>
+      <input id="npEstoqueInicial" type="number" min="0" placeholder="0 — deixe em branco para cadastrar sem estoque">
+    </div>
     <p class="small">* obrigatórios · os níveis podem ser ajustados depois em Meus Produtos</p>
     <button class="fechar" onclick="salvarNovoProduto()">Cadastrar produto</button>
     <button class="secundario" onclick="document.getElementById('modalNovoProduto').classList.remove('show')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===== ENTRADA MANUAL DE ESTOQUE ===== -->
+<div class="modal" id="modalEntradaManual">
+  <div class="folha">
+    <h2>📦 Entrada de Estoque</h2>
+    <p id="emNome" style="font-size:15px;font-weight:700;color:#334155;margin:0 0 16px"></p>
+    <div class="cfgBox">
+      <label id="emQtdLabel">Quantidade (unidades)</label>
+      <input id="emQtd" type="number" min="1" value="1" oninput="_atualizarTotalEM()">
+      <button type="button" id="em-toggle-mult" onclick="_toggleMultiploEM()" style="background:none;border:none;color:#0ea5e9;font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline;display:block;margin-top:2px;text-align:left">📦 Embalagem com múltiplas unidades?</button>
+      <div id="em-mult-box" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-top:8px">
+        <label style="font-size:13px;margin:0 0 6px">Unidades por embalagem</label>
+        <input id="emMultiplo" type="number" min="1" value="1" oninput="_atualizarTotalEM()" style="margin-bottom:0">
+        <p id="emTotalPreview" style="font-size:13px;font-weight:700;color:#0f766e;margin:8px 0 0"></p>
+      </div>
+      <label style="margin-top:12px">Preço unitário pago (R$) — opcional</label>
+      <input id="emPreco" type="number" min="0" step="0.01" placeholder="0,00">
+      <label style="margin-top:8px">Mercado — opcional</label>
+      <input id="emMercado" type="text" placeholder="Ex: Extra, Carrefour">
+    </div>
+    <button class="fechar" onclick="salvarEntradaManual()">✅ Registrar entrada</button>
+    <button class="secundario" onclick="document.getElementById('modalEntradaManual').classList.remove('show')">Cancelar</button>
   </div>
 </div>
 
@@ -1469,6 +1497,7 @@ function renderCardProd(p) {
       </div>
       <div class="card-prod-acoes">
         <button class="btn-ac" onclick="abrirHistorico(${p.id},'${esc(p.nome_canonico).replace(/'/g,"\\'")}')">📋 Histórico</button>
+        <button class="btn-ac vd" onclick="abrirEntradaManual(${p.id},'${esc(p.nome_canonico).replace(/'/g,"\\'")}')">📦 Entrada</button>
         <button class="btn-ac az" onclick="abrirEditar(${p.id})">✏️ Editar</button>
         <button class="btn-ac vm" onclick="inativarProduto(${p.id})">🚫 Inativar</button>
       </div></div>`;
@@ -1695,26 +1724,41 @@ function abrirNovoProduto(ctx, grupoIds, grupoId) {
   document.getElementById('npMin').value = '1';
   _avisarMin('np');
   document.getElementById('npIdeal').value = '2';
-  if (ctx?.descricaoNota) {
-    const { val, un } = _extrairTamanhoDeTexto(ctx.descricaoNota);
-    document.getElementById('npTamVal').value = val;
-    document.getElementById('npTamUn').value = un;
-    // Remove medida do nome base para evitar duplicação
-    const nomeBase = _capitalizarNome(ctx.descricaoNota.replace(/(\d+\.?\d*)\s*(ml|g|kg|L|m²)/gi, '').replace(/\s+/g,' ').trim());
-    document.getElementById('npNome').value = nomeBase;
-  } else {
-    document.getElementById('npNome').value = '';
-    document.getElementById('npTamVal').value = '';
-    document.getElementById('npTamUn').value = 'un';
-  }
-  _atualizarPreviewNome();
+  document.getElementById('npEstoqueInicial').value = '';
   const orig = document.getElementById('npOrigem');
   if (ctx?.descricaoNota) {
     const preco = ctx.precoUnit != null ? ' · R$ '+Number(ctx.precoUnit).toFixed(2) : '';
     orig.innerHTML = `<div style="background:#fef3c7;border-radius:10px;padding:10px;margin-bottom:12px;font-size:13px;color:#92400e">
       <b>Da nota fiscal:</b> "${esc(ctx.descricaoNota)}"${preco}</div>`;
-  } else { orig.innerHTML = ''; }
-  document.getElementById('modalNovoProduto').classList.add('show');
+    // Preenche com regex agora, Haiku atualiza em background
+    const { val, un } = _extrairTamanhoDeTexto(ctx.descricaoNota);
+    document.getElementById('npTamVal').value = val;
+    document.getElementById('npTamUn').value = un;
+    const nomeBase = _capitalizarNome(ctx.descricaoNota.replace(/(\d+\.?\d*)\s*(ml|g|kg|L|m²)/gi, '').replace(/\s+/g,' ').trim());
+    document.getElementById('npNome').value = nomeBase;
+    _atualizarPreviewNome();
+    document.getElementById('modalNovoProduto').classList.add('show');
+    // Melhora o nome com Haiku em background (N-2)
+    api('/escanear/canonico', { method:'POST', body: JSON.stringify({ descricao: ctx.descricaoNota }) })
+      .then(r => r.json())
+      .then(({ nome, tamanho }) => {
+        if (nome) document.getElementById('npNome').value = nome;
+        if (tamanho) {
+          const { val: hv, un: hu } = _parseTamanho(tamanho);
+          if (hv) document.getElementById('npTamVal').value = hv;
+          if (hu && hu !== 'un') document.getElementById('npTamUn').value = hu;
+        }
+        _atualizarPreviewNome();
+      })
+      .catch(() => {}); // mantém valores do regex se Haiku falhar
+  } else {
+    orig.innerHTML = '';
+    document.getElementById('npNome').value = '';
+    document.getElementById('npTamVal').value = '';
+    document.getElementById('npTamUn').value = 'un';
+    _atualizarPreviewNome();
+    document.getElementById('modalNovoProduto').classList.add('show');
+  }
 }
 
 function _avisarMin(pref) {
@@ -1761,6 +1805,7 @@ async function salvarNovoProduto() {
   const tamanho = _composeTam(tamVal, tamUn);
   const nome_canonico = _composeNomeFinal(nomeBase, tamVal, tamUn);
   const catId = document.getElementById('npCategoria').value;
+  const estoqueInicial = +document.getElementById('npEstoqueInicial').value || 0;
   const body = {
     icone: document.getElementById('npIcone').value.trim() || '🧴',
     nome_canonico,
@@ -1768,6 +1813,7 @@ async function salvarNovoProduto() {
     tamanho,
     min_nivel: Math.max(0, +document.getElementById('npMin').value),
     par_level: +document.getElementById('npIdeal').value || 2,
+    ...(estoqueInicial > 0 && { estoque_inicial: estoqueInicial }),
   };
   try {
     const r = await api('/itens', { method:'POST', body: JSON.stringify(body) });
@@ -1792,6 +1838,61 @@ async function salvarNovoProduto() {
     if (document.getElementById('modalMeusProdutos').classList.contains('show')) await carregarTodos();
     carregar();
   } catch(e) { alert('Erro ao cadastrar: ' + e.message); }
+}
+
+// ===== ENTRADA MANUAL DE ESTOQUE (M-2/M-4) =====
+let _emProdId = null, _emProdNome = null;
+
+function abrirEntradaManual(id, nome) {
+  _emProdId = id; _emProdNome = nome;
+  document.getElementById('emNome').textContent = nome;
+  document.getElementById('emQtd').value = '1';
+  document.getElementById('emPreco').value = '';
+  document.getElementById('emMercado').value = '';
+  document.getElementById('emMultiplo').value = '1';
+  document.getElementById('em-mult-box').style.display = 'none';
+  document.getElementById('em-toggle-mult').textContent = '📦 Embalagem com múltiplas unidades?';
+  document.getElementById('emQtdLabel').textContent = 'Quantidade (unidades)';
+  document.getElementById('emTotalPreview').textContent = '';
+  document.getElementById('modalEntradaManual').classList.add('show');
+}
+
+function _toggleMultiploEM() {
+  const box = document.getElementById('em-mult-box');
+  const btn = document.getElementById('em-toggle-mult');
+  const label = document.getElementById('emQtdLabel');
+  const abre = box.style.display === 'none';
+  box.style.display = abre ? '' : 'none';
+  btn.textContent = abre ? '❌ Cancelar embalagem múltipla' : '📦 Embalagem com múltiplas unidades?';
+  label.textContent = abre ? 'Quantas embalagens você comprou?' : 'Quantidade (unidades)';
+  document.getElementById('emMultiplo').value = 1;
+  _atualizarTotalEM();
+}
+
+function _atualizarTotalEM() {
+  const qtd = Math.max(0, Number(document.getElementById('emQtd').value) || 0);
+  const mult = Math.max(1, Number(document.getElementById('emMultiplo').value) || 1);
+  const total = qtd * mult;
+  document.getElementById('emTotalPreview').textContent =
+    mult > 1 ? `Total a registrar: ${total} unidade${total !== 1 ? 's' : ''}` : '';
+}
+
+async function salvarEntradaManual() {
+  const qtdEmb = Math.max(1, Number(document.getElementById('emQtd').value) || 1);
+  const mult = Math.max(1, Number(document.getElementById('emMultiplo').value) || 1);
+  const delta = qtdEmb * mult;
+  const preco = document.getElementById('emPreco').value;
+  const mercado = document.getElementById('emMercado').value.trim();
+  try {
+    const body = { delta, quem: 'dono' };
+    if (preco) body.preco_unit = Number(preco);
+    if (mercado) body.mercado = mercado;
+    await api(`/itens/${_emProdId}/mov`, { method: 'POST', body: JSON.stringify(body) });
+    document.getElementById('modalEntradaManual').classList.remove('show');
+    await carregarTodos();
+    carregar();
+    mostrarToast('✅ Entrada registrada!');
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 // ===== ESCANEAR PRODUTO (Fase A) =====
@@ -1881,17 +1982,88 @@ async function buscarProdutoEscanear(gtin) {
   }
 }
 
+let _escExistenteId = null;
+
 function _escMostrarExistente(produto) {
+  _escExistenteId = produto.catalogo_id;
   document.getElementById('esc-s4').innerHTML = `
-    <div style="text-align:center;padding:32px 16px">
-      <div style="font-size:54px">ℹ️</div>
-      <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--azul)">Produto já cadastrado</p>
-      <p style="font-size:15px;color:#64748b;margin:0 0 8px">"${esc(produto.nome_canonico)}"</p>
-      <p style="font-size:13px;color:#94a3b8;margin:0 0 28px">Use Meus Produtos para ajustar o estoque deste item.</p>
-      <button class="fechar" style="margin:0 0 12px" onclick="mostrarStepEsc(0)">📷 Escanear outro</button>
-      <button class="secundario" style="margin:0" onclick="fecharEscanear()">Fechar</button>
+    <div class="mf-corpo">
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:13px;color:#16a34a;font-weight:700;margin-bottom:4px">✅ Produto já cadastrado</div>
+        <div style="font-size:15px;font-weight:700;color:#334155">${esc(produto.nome_canonico)}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">mín ${produto.min_nivel} / ideal ${produto.par_level}</div>
+      </div>
+      <div class="cfgBox">
+        <p style="font-size:14px;font-weight:700;margin:0 0 10px;color:#334155">📦 Registrar entrada de estoque</p>
+        <label id="esc-ex-qtd-label">Quantidade comprada</label>
+        <input id="esc-ex-qtd" type="number" min="1" value="1" oninput="_atualizarTotalEscEx()">
+        <button type="button" onclick="_toggleMultiploEscEx()" id="esc-ex-toggle-mult"
+          style="background:none;border:none;color:#0ea5e9;font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline;display:block;margin-top:2px;text-align:left">📦 Embalagem com múltiplas unidades?</button>
+        <div id="esc-ex-mult-box" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-top:8px">
+          <label style="font-size:13px;margin:0 0 6px">Unidades por embalagem</label>
+          <input id="esc-ex-mult" type="number" min="1" value="1" oninput="_atualizarTotalEscEx()" style="margin-bottom:0">
+          <p id="esc-ex-total" style="font-size:13px;font-weight:700;color:#0f766e;margin:8px 0 0"></p>
+        </div>
+        <label style="margin-top:12px">Preço unitário pago (R$) — opcional</label>
+        <div style="display:flex;gap:8px">
+          <input id="esc-ex-preco" type="number" min="0" step="0.01" placeholder="0,00"
+            style="flex:1;padding:10px;font-size:15px;border:1.5px solid #cbd5e1;border-radius:10px">
+          <button onclick="_buscarPrecoMLExistente('${esc(produto.nome_canonico).replace(/'/g,"\\'")}')"
+            style="padding:10px 14px;border:1.5px solid #ff7300;color:#ff7300;background:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none">🔍 ML</button>
+        </div>
+      </div>
+      <button class="fechar" onclick="_salvarEntradaEscEx()">✅ Registrar entrada</button>
+      <button class="secundario" style="margin-top:8px" onclick="mostrarStepEsc(0)">📷 Escanear outro</button>
+      <button class="secundario" style="margin-top:0" onclick="fecharEscanear()">Fechar</button>
     </div>`;
   mostrarStepEsc(4);
+}
+
+function _atualizarTotalEscEx() {
+  const qtd = Math.max(0, Number(document.getElementById('esc-ex-qtd').value) || 0);
+  const mult = Math.max(1, Number(document.getElementById('esc-ex-mult').value) || 1);
+  const total = qtd * mult;
+  const el = document.getElementById('esc-ex-total');
+  if (el) el.textContent = mult > 1 ? `Total a registrar: ${total} unidade${total !== 1 ? 's' : ''}` : '';
+}
+
+function _toggleMultiploEscEx() {
+  const box = document.getElementById('esc-ex-mult-box');
+  const btn = document.getElementById('esc-ex-toggle-mult');
+  const label = document.getElementById('esc-ex-qtd-label');
+  const abre = box.style.display === 'none';
+  box.style.display = abre ? '' : 'none';
+  btn.textContent = abre ? '❌ Cancelar embalagem múltipla' : '📦 Embalagem com múltiplas unidades?';
+  label.textContent = abre ? 'Quantas embalagens você comprou?' : 'Quantidade comprada';
+  document.getElementById('esc-ex-mult').value = 1;
+  _atualizarTotalEscEx();
+}
+
+function _buscarPrecoMLExistente(nome) {
+  if (!nome) return;
+  window.open('https://lista.mercadolivre.com.br/' + encodeURIComponent(nome), '_blank');
+}
+
+async function _salvarEntradaEscEx() {
+  const qtdEmb = Math.max(1, Number(document.getElementById('esc-ex-qtd').value) || 1);
+  const mult = Math.max(1, Number(document.getElementById('esc-ex-mult').value) || 1);
+  const qtd = qtdEmb * mult;
+  const preco = document.getElementById('esc-ex-preco').value;
+  try {
+    await api('/escanear/entrada', { method: 'POST', body: JSON.stringify({
+      catalogo_id: _escExistenteId, qtd,
+      preco_unit: preco ? Number(preco) : null,
+    })});
+    document.getElementById('esc-s4').innerHTML = `
+      <div style="text-align:center;padding:32px 16px">
+        <div style="font-size:54px">✅</div>
+        <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--verde)">Entrada registrada!</p>
+        <p style="font-size:15px;color:#64748b;margin:0 0 28px">${qtd} unidade${qtd !== 1 ? 's' : ''} adicionada${qtd !== 1 ? 's' : ''} ao estoque.</p>
+        <button class="fechar" style="margin:0 0 12px" onclick="mostrarStepEsc(0)">📷 Escanear outro</button>
+        <button class="secundario" style="margin:0" onclick="fecharEscanear()">Fechar</button>
+      </div>`;
+    carregar();
+  } catch(e) { alert('Erro ao registrar: ' + e.message); }
 }
 
 function abrirFormEscanear(gtin, externo) {
