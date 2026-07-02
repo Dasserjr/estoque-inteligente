@@ -110,7 +110,7 @@ async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) 
 
 // Confirmação humana: vincula (ou cria novo), aprende o apelido e dá entrada.
 // Usa transação explícita: evento + apelido são atômicos.
-async function confirmarItem(db, { compra_item_id, catalogo_id, novo, gtin, aprender = true }) {
+async function confirmarItem(db, { compra_item_id, catalogo_id, gtin, aprender = true }) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -118,14 +118,7 @@ async function confirmarItem(db, { compra_item_id, catalogo_id, novo, gtin, apre
     const ci = rows[0];
     if (!ci) { await client.query('ROLLBACK'); return { erro: 'item de compra não encontrado' }; }
     let alvoId = catalogo_id;
-    if (!alvoId && novo) {
-      const { rows: nr } = await client.query(
-        `INSERT INTO catalogo (nome_canonico, categoria, unidade, par_level, min_nivel, icone) VALUES ($1,$2,'un',1,1,'novo') RETURNING id`,
-        [novo.nome_canonico, novo.categoria || null]
-      );
-      alvoId = nr[0].id;
-    }
-    if (!alvoId) { await client.query('ROLLBACK'); return { erro: 'informe catalogo_id ou novo' }; }
+    if (!alvoId) { await client.query('ROLLBACK'); return { erro: 'catalogo_id obrigatório' }; }
     await client.query(`UPDATE compra_itens SET catalogo_id = $1 WHERE id = $2`, [alvoId, compra_item_id]);
     await client.query(
       `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'dono',$3)`,

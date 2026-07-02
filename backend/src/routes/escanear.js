@@ -120,8 +120,8 @@ async function buscarNaBase(gtin) {
       const p = d.product;
       const nomeOFF = p.product_name_pt || p.product_name || '';
       if (nomeOFF) {
-        const { nome, tamanho } = gerarNomeBasico(nomeOFF);
-        return { nome, tamanho: tamanho || p.quantity || '', fonte: 'openfoodfacts' };
+        const { nome, tamanho, multiplo } = await gerarNomeCanonico(nomeOFF);
+        return { nome, tamanho: tamanho || p.quantity || '', multiplo, fonte: 'openfoodfacts' };
       }
     }
   } catch { /* não encontrado */ }
