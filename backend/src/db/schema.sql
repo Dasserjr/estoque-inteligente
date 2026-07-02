@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS compra_itens (
   catalogo_id    INTEGER REFERENCES catalogo(id),
   descricao_nota TEXT,
   qtd            NUMERIC,
-  preco_unit     NUMERIC(12,2)
+  preco_unit     NUMERIC(12,2),
+  confirmado_em  TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_compraitens_cat ON compra_itens(catalogo_id);
 

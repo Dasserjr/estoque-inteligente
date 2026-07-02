@@ -143,15 +143,26 @@ Funções: `normalizar`, `casarItem` (gtin > apelido > fuzzy tolerante a abrevia
 | Fase 3.4 | ❌ Fora do escopo | Alerta diário de ruptura por push/e-mail |
 | Relatórios | ✅ Completa | Acordeão on-screen com filtros e impressão (v1.4.0) |
 | Fase A scanner | ✅ Completa | Cadastro por código de barras — Cosmos/OFF + Haiku + embalagens múltiplas (v1.7.x) |
-| Fase B scanner | ⏳ Pendente | Preço via API Mercado Livre (hoje abre browser) |
-| Fase C scanner | ⏳ Pendente | GTIN já cadastrado → tela de entrada de estoque direta |
+| Fase B scanner | 🔵 Evolutiva eventual | Botão 🔍 ML já abre busca de preço no browser — API seria redundante |
+| Fase C scanner | ✅ Completa | GTIN já cadastrado → formulário de entrada rápida com preço e multiplo (v1.8.3) |
+| S1 NF batch | ✅ Completa | Revisão em batch da NF antes de commitar — todos os itens para revisão humana, confirmar-todos (v1.9.0) |
 
-### Pendentes / evolutivas (sem prazo)
+### Decisões de arquitetura S1 (v1.9.0)
+- **processarNota() é área de preparo**: nenhum evento criado no match; todos os itens vão para `compra_itens` aguardando revisão.
+- **confirmado_em**: coluna TIMESTAMPTZ em `compra_itens`; stampa na confirmação individual ou em lote. Guarda de idempotência e filtro para relatórios.
+- **confirmar-todos**: rota nova `POST /api/compras/confirmar-todos`; cria 1 evento por grupo, aprende alias, stampa confirmado_em em lote.
+- **Agrupamento por catalogo_id**: N linhas do mesmo produto na NF viram 1 grupo na tela de revisão (Option B). Aprende alias 1× por grupo.
+- **Alias pós-humano**: N-4 (alias no match automático) removido; alias só aprendido após confirmação humana — qualquer score, não só ≥ 0.8.
+- **Relatórios**: gastos/mensal, gastos, historico/:id e ultimo_preco filtram por `confirmado_em IS NOT NULL` para não contar compras não confirmadas.
+
+### Evolutivas eventuais (sem prazo)
 - Exportação Excel — removida do escopo em v1.4.0; infraestrutura de rotas `/api/exportar` já existe
 - Adaptador NFC-e por QR code (alternativa à foto para entrada de nota)
 - Gasto por produto (detalhar dentro da tela de Gastos)
 - ROP dinâmico e alerta diário — infraestrutura pronta (`lead_time_dias`, `dias_cobertura`), lógica não implementada por decisão do dono
 - D3 — verificação de domínio no Resend (ação externa de DNS, fora do código)
+- Fase B scanner — preço via API ML (botão 🔍 ML já resolve; API seria acréscimo menor)
+- M-3 — GTIN no form Manual (decisão: scanner obrigatório para produtos com código de barras)
 
 ## Reaproveitamento (panorama-patrimonio)
 Mesma stack → porte = copiar modulo-compras/, prefixar tabelas com estoque_, criar rota

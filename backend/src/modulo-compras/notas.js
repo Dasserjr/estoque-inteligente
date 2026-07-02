@@ -66,7 +66,8 @@ async function casarItem(db, descricao, gtin) {
 }
 
 // Processa uma nota inteira (itens já extraídos).
-// Usa transação explícita: falha em qualquer item faz ROLLBACK de tudo.
+// S1: todos os itens ficam em compra_itens para revisão humana — nenhum evento é criado aqui.
+// O dono revisa na tela e confirma via /compras/confirmar-todos.
 async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) {
   if (!Array.isArray(itens) || !itens.length) return { erro: 'nota sem itens' };
   const client = await db.connect();
@@ -77,42 +78,44 @@ async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) 
       [mercado || null, chave_nfce || null, total ?? null, origem || 'manual']
     );
     const compra_id = cr[0].id;
-    const aplicados = [], pendentes = [];
+    const revisao = [];
     for (const it of itens) {
       const m = await casarItem(client, it.descricao, it.gtin);
       if (m.catalogo_id) {
-        await client.query(
-          `INSERT INTO compra_itens (compra_id, catalogo_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4,$5)`,
+        const { rows: ci } = await client.query(
+          `INSERT INTO compra_itens (compra_id, catalogo_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
           [compra_id, m.catalogo_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
         );
-        await client.query(
-          `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'sistema',$3)`,
-          [m.catalogo_id, it.qtd ?? 1, compra_id]
-        );
-        // N-4: aprende alias apenas para matches fuzzy de alta confiança (≥0.8)
-        if (m.confianca === 'fuzzy' && m.score >= 0.8 && it.descricao) {
-          const { rows: ae } = await client.query(
-            `SELECT 1 FROM apelidos WHERE catalogo_id=$1 AND LOWER(texto_na_nota)=LOWER($2) LIMIT 1`,
-            [m.catalogo_id, it.descricao]
-          );
-          if (!ae.length) {
-            await client.query(
-              `INSERT INTO apelidos (catalogo_id, texto_na_nota, fonte) VALUES ($1,$2,'auto')`,
-              [m.catalogo_id, it.descricao]
-            );
-          }
-        }
-        aplicados.push({ ...it, catalogo_id: m.catalogo_id, via: m.confianca, score: m.score });
+        revisao.push({
+          compra_item_id: ci[0].id, descricao: it.descricao,
+          qtd: it.qtd ?? 1, preco_unit: it.preco_unit ?? null,
+          catalogo_id: m.catalogo_id, nome_canonico: null,
+          confianca: m.confianca, score: m.score, sugestoes: [],
+        });
       } else {
         const { rows: ci } = await client.query(
           `INSERT INTO compra_itens (compra_id, descricao_nota, qtd, preco_unit) VALUES ($1,$2,$3,$4) RETURNING id`,
           [compra_id, it.descricao, it.qtd ?? 1, it.preco_unit ?? null]
         );
-        pendentes.push({ compra_item_id: ci[0].id, ...it, sugestoes: m.sugestoes });
+        revisao.push({
+          compra_item_id: ci[0].id, descricao: it.descricao,
+          qtd: it.qtd ?? 1, preco_unit: it.preco_unit ?? null,
+          catalogo_id: null, nome_canonico: null,
+          confianca: null, score: m.score, sugestoes: m.sugestoes,
+        });
       }
     }
+    // Busca nomes canônicos de todos os produtos reconhecidos
+    const matchedIds = [...new Set(revisao.filter(r => r.catalogo_id).map(r => r.catalogo_id))];
+    if (matchedIds.length) {
+      const { rows: nomes } = await client.query(
+        `SELECT id, nome_canonico FROM catalogo WHERE id = ANY($1)`, [matchedIds]
+      );
+      const nomeMap = Object.fromEntries(nomes.map(n => [n.id, n.nome_canonico]));
+      revisao.forEach(r => { if (r.catalogo_id) r.nome_canonico = nomeMap[r.catalogo_id] || null; });
+    }
     await client.query('COMMIT');
-    return { compra_id, aplicados, pendentes };
+    return { compra_id, itens: revisao };
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
@@ -121,8 +124,8 @@ async function processarNota(db, { mercado, chave_nfce, origem, total, itens }) 
   }
 }
 
-// Confirmação humana: vincula (ou cria novo), aprende o apelido e dá entrada.
-// Usa transação explícita: evento + apelido são atômicos.
+// Confirmação humana de item individual: vincula, aprende apelido e dá entrada.
+// Idempotente: se já confirmado (confirmado_em preenchido), retorna ok sem novo evento.
 async function confirmarItem(db, { compra_item_id, catalogo_id, gtin, aprender = true }) {
   const client = await db.connect();
   try {
@@ -130,18 +133,28 @@ async function confirmarItem(db, { compra_item_id, catalogo_id, gtin, aprender =
     const { rows } = await client.query(`SELECT * FROM compra_itens WHERE id = $1`, [compra_item_id]);
     const ci = rows[0];
     if (!ci) { await client.query('ROLLBACK'); return { erro: 'item de compra não encontrado' }; }
+    if (ci.confirmado_em) { await client.query('COMMIT'); return { ok: true, catalogo_id: ci.catalogo_id }; }
     let alvoId = catalogo_id;
     if (!alvoId) { await client.query('ROLLBACK'); return { erro: 'catalogo_id obrigatório' }; }
-    await client.query(`UPDATE compra_itens SET catalogo_id = $1 WHERE id = $2`, [alvoId, compra_item_id]);
+    await client.query(
+      `UPDATE compra_itens SET catalogo_id = $1, confirmado_em = NOW() WHERE id = $2`,
+      [alvoId, compra_item_id]
+    );
     await client.query(
       `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'dono',$3)`,
       [alvoId, ci.qtd ?? 1, ci.compra_id]
     );
     if (aprender && ci.descricao_nota) {
-      await client.query(
-        `INSERT INTO apelidos (catalogo_id, texto_na_nota, gtin, fonte) VALUES ($1,$2,$3,'confirmacao')`,
-        [alvoId, ci.descricao_nota, gtin || null]
+      const { rows: ae } = await client.query(
+        `SELECT 1 FROM apelidos WHERE catalogo_id=$1 AND LOWER(texto_na_nota)=LOWER($2) LIMIT 1`,
+        [alvoId, ci.descricao_nota]
       );
+      if (!ae.length) {
+        await client.query(
+          `INSERT INTO apelidos (catalogo_id, texto_na_nota, gtin, fonte) VALUES ($1,$2,$3,'confirmacao')`,
+          [alvoId, ci.descricao_nota, gtin || null]
+        );
+      }
     }
     await client.query('COMMIT');
     return { ok: true, catalogo_id: alvoId };

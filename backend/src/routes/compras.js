@@ -15,6 +15,7 @@ router.get('/lista', autenticar, async (req, res) => {
           cat.nome AS categoria_nome, cat.icone AS categoria_icone,
           (SELECT ci.preco_unit FROM compra_itens ci
            WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
+             AND ci.confirmado_em IS NOT NULL
            ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
         FROM v_estoque v
         LEFT JOIN catalogo c ON c.id = v.id
@@ -29,6 +30,7 @@ router.get('/lista', autenticar, async (req, res) => {
         SELECT v.id, v.nome_canonico, v.categoria, v.icone, v.estoque, v.min_nivel, v.par_level,
           (SELECT ci.preco_unit FROM compra_itens ci
            WHERE ci.catalogo_id = v.id AND ci.preco_unit IS NOT NULL
+             AND ci.confirmado_em IS NOT NULL
            ORDER BY ci.id DESC LIMIT 1) AS ultimo_preco
         FROM v_estoque v
         WHERE v.estoque <= v.min_nivel
@@ -60,6 +62,7 @@ router.get('/gastos/mensal', autenticar, exigirDono, async (req, res) => {
       JOIN compras comp ON comp.id = ci.compra_id
       WHERE ci.preco_unit IS NOT NULL
         AND ci.catalogo_id IS NOT NULL
+        AND ci.confirmado_em IS NOT NULL
         AND EXTRACT(YEAR FROM comp.data) = $1
       GROUP BY EXTRACT(MONTH FROM comp.data)::int
       ORDER BY mes
@@ -86,6 +89,7 @@ router.get('/gastos', autenticar, exigirDono, async (req, res) => {
       JOIN catalogo c ON c.id = ci.catalogo_id
       WHERE comp.data >= now() - (INTERVAL '1 day' * $1)
         AND ci.preco_unit IS NOT NULL
+        AND ci.confirmado_em IS NOT NULL
       GROUP BY COALESCE(c.categoria, 'Sem categoria')
       ORDER BY total DESC
     `, [periodo]);
@@ -108,6 +112,7 @@ router.get('/historico/:id', autenticar, exigirDono, async (req, res) => {
       FROM compra_itens ci
       JOIN compras comp ON comp.id = ci.compra_id
       WHERE ci.catalogo_id = $1
+        AND ci.confirmado_em IS NOT NULL
       ORDER BY comp.data DESC
       LIMIT 100
     `, [id]);
@@ -174,15 +179,70 @@ router.post('/confirmar-lote', autenticar, exigirDono, async (req, res) => {
   }
 });
 
-// DELETE /api/compras/item/:id — descarta item pendente; apaga a nota se ficar sem itens.
+// POST /api/compras/confirmar-todos — confirma todos os itens revisados em lote (S1).
+// Body: { itens: [{ compra_item_ids: number[], catalogo_id: number, qtd: number }] }
+// Cada entrada representa um grupo (pode ter N compra_items do mesmo produto).
+// Cria 1 evento por grupo com a qtd revisada pelo dono. Aprende alias. Idempotente via confirmado_em.
+router.post('/confirmar-todos', autenticar, exigirDono, async (req, res) => {
+  const { itens } = req.body || {};
+  if (!Array.isArray(itens) || !itens.length) return res.status(400).json({ erro: 'itens obrigatório' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let confirmados = 0;
+    for (const it of itens) {
+      const { compra_item_ids, catalogo_id, qtd } = it;
+      if (!Array.isArray(compra_item_ids) || !compra_item_ids.length || !catalogo_id) continue;
+      const { rows: pendentes } = await client.query(
+        `SELECT id, descricao_nota, compra_id FROM compra_itens
+         WHERE id = ANY($1) AND confirmado_em IS NULL`,
+        [compra_item_ids.map(Number)]
+      );
+      if (!pendentes.length) continue;
+      const pendentesIds = pendentes.map(r => r.id);
+      const ci0 = pendentes[0];
+      const qtdTotal = qtd != null && !isNaN(qtd) ? Math.max(0.1, Number(qtd)) : pendentesIds.length;
+      await client.query(
+        `UPDATE compra_itens SET catalogo_id = $1, confirmado_em = NOW() WHERE id = ANY($2)`,
+        [catalogo_id, pendentesIds]
+      );
+      await client.query(
+        `INSERT INTO eventos (catalogo_id, tipo, qtd, quem, compra_id) VALUES ($1,'compra',$2,'dono',$3)`,
+        [catalogo_id, qtdTotal, ci0.compra_id]
+      );
+      if (ci0.descricao_nota) {
+        const { rows: ae } = await client.query(
+          `SELECT 1 FROM apelidos WHERE catalogo_id=$1 AND LOWER(texto_na_nota)=LOWER($2) LIMIT 1`,
+          [catalogo_id, ci0.descricao_nota]
+        );
+        if (!ae.length) {
+          await client.query(
+            `INSERT INTO apelidos (catalogo_id, texto_na_nota, fonte) VALUES ($1,$2,'confirmacao')`,
+            [catalogo_id, ci0.descricao_nota]
+          );
+        }
+      }
+      confirmados += qtdTotal;
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, confirmados });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ erro: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/compras/item/:id — descarta item não confirmado; apaga a nota se ficar sem itens.
 router.delete('/item/:id', autenticar, exigirDono, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ erro: 'id inválido' });
   try {
     const { rows } = await pool.query(
-      `SELECT compra_id FROM compra_itens WHERE id = $1 AND catalogo_id IS NULL`, [id]
+      `SELECT compra_id FROM compra_itens WHERE id = $1 AND confirmado_em IS NULL`, [id]
     );
-    if (!rows[0]) return res.status(404).json({ erro: 'item pendente não encontrado' });
+    if (!rows[0]) return res.status(404).json({ erro: 'item não encontrado ou já confirmado' });
     const compra_id = rows[0].compra_id;
     await pool.query(`DELETE FROM compra_itens WHERE id = $1`, [id]);
     const { rows: rest } = await pool.query(
@@ -193,13 +253,13 @@ router.delete('/item/:id', autenticar, exigirDono, async (req, res) => {
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// DELETE /api/compras/nota/:id — descarta itens pendentes da nota; apaga a nota se ficar vazia.
+// DELETE /api/compras/nota/:id — descarta todos os itens não confirmados da nota.
 router.delete('/nota/:id', autenticar, exigirDono, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ erro: 'id inválido' });
   try {
     await pool.query(
-      `DELETE FROM compra_itens WHERE compra_id = $1 AND catalogo_id IS NULL`, [id]
+      `DELETE FROM compra_itens WHERE compra_id = $1 AND confirmado_em IS NULL`, [id]
     );
     const { rows } = await pool.query(`SELECT id FROM compra_itens WHERE compra_id = $1`, [id]);
     if (!rows.length) await pool.query(`DELETE FROM compras WHERE id = $1`, [id]);
